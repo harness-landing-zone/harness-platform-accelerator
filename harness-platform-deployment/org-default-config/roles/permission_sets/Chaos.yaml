@@ -1,0 +1,27 @@
+---
+permissions: [
+  # Chaos
+  "chaos_chaosexperiment_delete",
+  "chaos_chaosexperiment_edit",
+  "chaos_chaosexperiment_execute",
+  "chaos_chaosexperiment_executepipeline",
+  "chaos_chaosexperiment_view",
+  "chaos_chaosgameday_delete",
+  "chaos_chaosgameday_edit",
+  "chaos_chaosgameday_view",
+  "chaos_chaoshub_delete",
+  "chaos_chaoshub_edit",
+  "chaos_chaoshub_view",
+  "chaos_chaosimageregistry_edit",
+  "chaos_chaosimageregistry_view",
+  "chaos_chaosinfrastructure_delete",
+  "chaos_chaosinfrastructure_edit",
+  "chaos_chaosinfrastructure_view",
+  "chaos_chaosprobe_delete",
+  "chaos_chaosprobe_edit",
+  "chaos_chaosprobe_verify",
+  "chaos_chaosprobe_view",
+  "chaos_chaossecuritygovernance_delete",
+  "chaos_chaossecuritygovernance_edit",
+  "chaos_chaossecuritygovernance_view",
+]

@@ -1,0 +1,13 @@
+name: Platform Configs
+identifier: platform_configs
+type: Github
+description: GitHub App connector for the hsf-platform-bootstrap configuration repository
+tags:
+  type: git
+  provider: github
+execute_on_delegate: false
+connector_url: https://github.com/harness-landing-zone
+connection_type: Account
+validation_repo: hsf-custom-harness-template-library
+api_auth:
+  github_app_api: true

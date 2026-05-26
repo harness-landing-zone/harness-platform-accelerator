@@ -1,0 +1,13 @@
+---
+# SSO Configuration
+# linked_sso_type: "SAML" # Required for SSO link
+# linked_sso_id: # Required
+# sso_group_id: # Should be the SSO Group ID to map
+description: Harness Account Administrators group
+tags:
+  purpose: PlatformAdministrators
+role_bindings:
+  - role: _account_viewer
+    resource_group: _all_account_level_resources
+  - role: _account_admin
+    resource_group: _all_account_level_resources

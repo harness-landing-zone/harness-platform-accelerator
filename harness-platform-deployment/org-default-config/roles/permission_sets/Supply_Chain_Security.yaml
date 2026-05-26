@@ -1,0 +1,7 @@
+---
+permissions: [
+  # Supply Chain Security
+  "ssca_remediationtracker_close",
+  "ssca_remediationtracker_edit",
+  "ssca_remediationtracker_view",
+]

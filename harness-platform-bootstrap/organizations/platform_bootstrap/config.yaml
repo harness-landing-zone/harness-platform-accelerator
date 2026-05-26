@@ -1,0 +1,7 @@
+name: Harness Platform Accelerator
+description: Harness Accelerator Organization — hosts the Landing Zone deployment pipeline and platform tooling
+default_org_template: "bootstrap_default_config"
+default_project_template: "bootstrap_default_project"
+tags:
+  purpose: platform-management
+  owner: platform-team

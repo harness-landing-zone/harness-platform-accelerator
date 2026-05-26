@@ -1,0 +1,69 @@
+---
+########################
+# Harness Resource Group — PreProduction Environments
+#
+# Scope  : Project (Project 1 / Test Organisasion)
+# Purpose: Scopes resource access to PreProduction environments only.
+#
+# USE CASES:
+#   1. Restrict DIRECT environment manipulation (browsing configs, editing
+#      environment settings) to non-prod environments for developers.
+#   2. Reference this RG in role bindings when you want to allow actions
+#      (edit, delete, etc.) ONLY on dev/qa/test environments.
+#
+# IMPORTANT — same-pipeline multi-stage deployments:
+#   Harness performs a pre-flight RBAC check before starting any inline
+#   pipeline and validates access to EVERY environment the pipeline touches.
+#   If developers are only bound to this resource group, they will be BLOCKED
+#   from triggering a pipeline that also has a Production stage.
+#   For the "one pipeline, dev/test + approval + prod" pattern, use the
+#   Approval Step as the gate and bind developers to _all_project_level_resources
+#   instead (see Org1-Project1-Developers.yaml).
+#   Reserve this RG for direct, non-pipeline environment access bindings.
+#
+# Environments covered (type = PreProduction):
+#   - dev   (identifier: dev)
+#   - qa    (identifier: qa)
+#   - test  (identifier: test)
+#
+# Environments excluded (type = Production):
+#   - prod  (identifier: prod)
+#
+# attribute_values note:
+#   The Terraform provider uses "PreProduction" (matches harness_platform_environment
+#   type field).  The Harness UI labels this "Non-Production" — same underlying value.
+########################
+description: "Project-scoped resource group — PreProduction environments (dev, qa, test) only"
+
+tags:
+  purpose: PreProductionAccess
+  managed_by: solutions-factory
+
+include_child_scopes: false
+
+resource_filters:
+  # Services — allow access so pipeline stages can reference service definitions
+  - type: SERVICE
+
+  # Environments — ABAC filter: PreProduction type only
+  - type: ENVIRONMENT
+    filters:
+      - name: type
+        values:
+          - PreProduction
+
+  # Environment Groups
+  - type: ENVIRONMENT_GROUP
+
+  # Connectors — allow access so pipeline steps can resolve cloud/git credentials
+  - type: CONNECTOR
+
+  # Secrets — allow access so pipeline steps can resolve secret references
+  - type: SECRET
+
+  # Templates — allow access/copy so pipelines can reference shared stage templates
+  - type: TEMPLATE
+
+  # File Store — allow access so pipelines can read manifests and config files
+  - type: FILE
+

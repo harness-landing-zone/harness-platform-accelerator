@@ -1,0 +1,7 @@
+---
+permissions: [
+  "core_releases_create",
+  "core_releases_delete",
+  "core_releases_edit",
+  "core_releases_view",
+]

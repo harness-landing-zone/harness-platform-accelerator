@@ -1,0 +1,16 @@
+---
+name: Shared Resource Access Role
+description: Role to allow the shared resouces to be access by any scope in our example Terraform modules, Git connectors and Delegates in the account level
+permissions: [
+  "core_certificate_view",
+  "core_connector_access",
+  "core_connector_view",
+  "core_delegate_view",
+  "core_file_access",
+  "core_file_view",
+  "core_secret_access",
+  "core_secret_view",
+  "core_template_access",
+  "core_template_view",
+  "core_variable_view"
+]

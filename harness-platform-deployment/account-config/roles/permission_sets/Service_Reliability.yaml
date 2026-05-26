@@ -1,0 +1,14 @@
+---
+permissions: [
+  # Service Reliability
+  "chi_downtime_delete",
+  "chi_downtime_edit",
+  "chi_downtime_view",
+  "chi_monitoredservice_delete",
+  "chi_monitoredservice_edit",
+  "chi_monitoredservice_toggle",
+  "chi_monitoredservice_view",
+  "chi_slo_delete",
+  "chi_slo_edit",
+  "chi_slo_view",
+]

@@ -1,0 +1,12 @@
+---
+permissions: [
+  # Cloud Development Environments
+  "cde_gitspace_create",
+  "cde_gitspace_delete",
+  "cde_gitspace_edit",
+  "cde_gitspace_use",
+  "cde_gitspace_view",
+  "cde_infraprovider_delete",
+  "cde_infraprovider_edit",
+  "cde_infraprovider_view",
+]

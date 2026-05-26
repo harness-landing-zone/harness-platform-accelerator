@@ -1,0 +1,15 @@
+---
+permissions: [
+  # Security Orchestration
+  "sto_exemption_approve",
+  "sto_exemption_create",
+  "sto_exemption_view",
+  "sto_issue_view",
+  "sto_scan_view",
+  "sto_testtarget_approve",
+  "sto_testtarget_edit",
+  "sto_testtarget_view",
+  "sto_ticket_delete",
+  "sto_ticket_edit",
+  "sto_ticket_view"
+]

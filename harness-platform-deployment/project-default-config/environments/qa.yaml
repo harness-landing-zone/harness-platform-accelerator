@@ -1,0 +1,29 @@
+---
+########################
+# Harness Environment Management
+#
+# The Environment name
+# When creating a new Harness Environment, the following is used:
+# - name = The name of this file. Hyphens and underscores are converted into spaces
+# - identifier = The name of this file. Hyphens and spaces are converted into underscores
+#
+########################
+# Supported Types - PreProduction, Production
+type : PreProduction
+description: Harness Environment managed by Solutions Factory
+tags:
+  env: qa
+# Note:
+# ENVIRONMENT V2 Update
+# The YAML is needed if you want to define the Environment Variables and Overrides for the environment
+# Not Mandatory for Environment Creation nor Pipeline Usage
+#
+# When providing the yaml, the payload will be configured against the
+# ENV_GLOBAL_OVERRIDE section of the Override Settings for the scope.
+# yaml:
+#   overrides:
+#     variables:
+#       - name: global_var
+#         type: String
+#         value: "abc"
+#         required: false

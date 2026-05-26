@@ -1,0 +1,10 @@
+########################
+# Governance Policy for Harness
+#
+# The policy name
+# When creating a new Harness Policy, the following is used:
+# - name = The name of this file. Hyphens and underscores are converted into spaces
+# - identifier = The name of this file. Hyphens and spaces are converted into underscores
+#
+# The contents of this file should be a complete, non-templated Rego Policy
+########################

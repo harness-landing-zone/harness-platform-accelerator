@@ -1,0 +1,33 @@
+---
+name: IACM Admin role
+description: Admins role that allow to Create IACM Modules to the registry Test
+permissions: [
+  # Module Registry (account-level - admin only)
+  "iac_registry_view",
+  "iac_registry_edit",
+  "iac_registry_delete",
+
+  # Pipeline lifecycle (admins own default pipeline definitions)
+  "core_pipeline_edit",
+  "core_pipeline_delete",
+
+  # Connector lifecycle (admins own the cloud connectors)
+  "core_connector_edit",
+  "core_connector_delete",
+
+  # Workspace Template lifecycle (admins own the templates)
+  "core_template_edit",
+  "core_template_delete",
+  "core_template_copy",
+
+  # Governance / OPA (IaCM policy management)
+  "core_governancePolicy_view",
+  "core_governancePolicy_create",
+  "core_governancePolicy_edit",
+  "core_governancePolicy_delete",
+  "core_governancePolicySets_view",
+  "core_governancePolicySets_create",
+  "core_governancePolicySets_edit",
+  "core_governancePolicySets_delete",
+  "core_governancePolicySets_evaluate"
+]

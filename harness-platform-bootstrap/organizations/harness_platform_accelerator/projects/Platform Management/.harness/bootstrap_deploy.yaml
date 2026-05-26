@@ -1,0 +1,409 @@
+pipeline:
+  name: Harness Accelerator Bootstrap
+  identifier: bootstrap_deploy
+  projectIdentifier: platform_management
+  orgIdentifier: harness_platform_accelerator
+  tags: {}
+  properties:
+    ci:
+      codebase:
+        connectorRef: org.platform_configs
+        repoName: harness-platform-accelerator
+        build: <+input>
+  variables:
+    - name: tofu_action
+      type: String
+      description: tofu action to execute
+      required: true
+      value: <+input>.allowedValues(plan,apply,destroy)
+    - name: gcs_bucket
+      type: String
+      description: GCS bucket name for tofu remote state storage
+      required: true
+      value: <+input>.default(harness-backend-mk)
+    - name: gcp_project
+      type: String
+      description: GCP project ID used for OIDC token exchange and GCS backend
+      required: true
+      value: <+input>.default(767882366375)
+    - name: gcp_pool_id
+      type: String
+      description: GCP Workload Identity Pool ID for OIDC authentication
+      required: true
+      value: <+input>.default(harness-oidc)
+    - name: gcp_provider_id
+      type: String
+      description: GCP Workload Identity Provider ID for OIDC authentication
+      required: true
+      value: <+input>.default(harness-oidc)
+    - name: gcp_service_account_email
+      type: String
+      description: GCP service account email for OIDC token exchange
+      required: true
+      value: <+input>.default(harness-oidc@harness-management.iam.gserviceaccount.com)
+    - name: github_app_application_id
+      type: String
+      description: GitHub App application ID (non-sensitive) for the platform_configs connector
+      required: false
+      value: <+input>.default(2780955)
+    - name: github_app_installation_id
+      type: String
+      description: GitHub App installation ID (non-sensitive) for the platform_configs connector
+      required: false
+      value: <+input>.default(107783082)
+    - name: github_app_private_key_ref
+      type: String
+      description: Harness secret ref for the GitHub App PEM key (e.g. org.platform_configs_github_app_key)
+      required: false
+      value: <+input>.default(org.platform_configs_github_app_key)
+  stages:
+    - stage:
+        name: Bootstrap Plan
+        identifier: bootstrap_plan
+        description: Clone repo, run tofu plan, upload plan to GCS
+        type: CI
+        spec:
+          cloneCodebase: true
+          caching:
+            enabled: true
+            override: true
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec: {}
+          execution:
+            steps:
+              - step:
+                  type: Plugin
+                  name: GCP OIDC Token
+                  identifier: gcp_oidc_token_plan
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: plugins/gcp-oidc
+                    settings:
+                      project_id: <+pipeline.variables.gcp_project>
+                      pool_id: <+pipeline.variables.gcp_pool_id>
+                      provider_id: <+pipeline.variables.gcp_provider_id>
+                      service_account_email_id: <+pipeline.variables.gcp_service_account_email>
+                      duration: 3600
+                      create_application_credentials_file: false
+                  timeout: 5m
+                  failureStrategies:
+                    - onFailure:
+                        errors:
+                          - AllErrors
+                        action:
+                          type: Abort
+              - step:
+                  type: Run
+                  name: tofu Init
+                  identifier: tofu_init_plan
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: ghcr.io/opentofu/opentofu:latest
+                    shell: Sh
+                    command: |
+                      set -e
+                      cd harness-platform-bootstrap
+
+                      STATE_PREFIX="harness/platform_accelerator"
+                      export STATE_PREFIX
+
+                      tofu init \
+                        -backend-config="bucket=<+pipeline.variables.gcs_bucket>" \
+                        -backend-config="prefix=${STATE_PREFIX}"
+                    envVariables:
+                      GOOGLE_OAUTH_ACCESS_TOKEN: <+steps.gcp_oidc_token_plan.output.outputVariables.GCLOUD_ACCESS_TOKEN>
+                      TF_VAR_harness_platform_account: <+account.identifier>
+                    outputVariables:
+                      - name: STATE_PREFIX
+                  timeout: 15m
+                  failureStrategies:
+                    - onFailure:
+                        errors:
+                          - AllErrors
+                        action:
+                          type: Abort
+              - step:
+                  type: Run
+                  name: tofu Plan
+                  identifier: tofu_plan_step
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: ghcr.io/opentofu/opentofu:latest
+                    shell: Sh
+                    command: |
+                      set -e
+                      cd harness-platform-bootstrap
+
+                      export TF_VAR_git_connector_credentials=$(printf '%s' \
+                        '{"platform_configs":{"http_credentials":{"github_app":{"application_id":"<+pipeline.variables.github_app_application_id>","installation_id":"<+pipeline.variables.github_app_installation_id>","private_key_ref":"<+pipeline.variables.github_app_private_key_ref>"}},"api_auth":{"github_app_api":true}}}')
+
+                      if [ "<+pipeline.variables.tofu_action>" = "destroy" ]; then
+                        tofu plan -destroy -out=tfplan
+                      else
+                        tofu plan -out=tfplan
+                      fi
+                    envVariables:
+                      HARNESS_PLATFORM_API_KEY: <+secrets.getValue("harness_bootstrap_api_key")>
+                      HARNESS_ACCOUNT_ID: <+account.identifier>
+                      GOOGLE_OAUTH_ACCESS_TOKEN: <+steps.gcp_oidc_token_plan.output.outputVariables.GCLOUD_ACCESS_TOKEN>
+                      TF_VAR_harness_platform_account: <+account.identifier>
+                      TF_VAR_organization_name: harness_platform_accelerator
+                      TF_VAR_gcs_bucket: <+pipeline.variables.gcs_bucket>
+                      TF_VAR_gcp_project: <+pipeline.variables.gcp_project>
+                      TF_VAR_gcp_pool_id: <+pipeline.variables.gcp_pool_id>
+                      TF_VAR_gcp_provider_id: <+pipeline.variables.gcp_provider_id>
+                      TF_VAR_gcp_service_account_email: <+pipeline.variables.gcp_service_account_email>
+                  timeout: 30m
+                  failureStrategies:
+                    - onFailure:
+                        errors:
+                          - AllErrors
+                        action:
+                          type: Abort
+              - step:
+                  type: Run
+                  name: Upload Plan to GCS
+                  identifier: upload_plan
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: google/cloud-sdk:slim
+                    shell: Sh
+                    command: |
+                      set -e
+
+                      PLAN_FILE="/harness/harness-platform-bootstrap/tfplan"
+                      if [ ! -f "$PLAN_FILE" ]; then
+                        echo "ERROR: Plan file not found at $PLAN_FILE"
+                        exit 1
+                      fi
+
+                      GCS_BUCKET="<+pipeline.variables.gcs_bucket>"
+                      STATE_PREFIX="$STATE_PREFIX"
+                      EXECUTION_ID="<+pipeline.executionId>"
+                      PLAN_OBJECT="${STATE_PREFIX}/plans/${EXECUTION_ID}.tfplan"
+
+                      echo "Uploading plan to gs://${GCS_BUCKET}/${PLAN_OBJECT}"
+
+                      ENCODED_OBJECT=$(printf '%s' "$PLAN_OBJECT" | sed 's|/|%2F|g')
+
+                      HTTP_CODE=$(curl -sf -o /dev/null -w '%{http_code}' \
+                        -X POST \
+                        -H "Authorization: Bearer $GCLOUD_ACCESS_TOKEN" \
+                        -H "Content-Type: application/octet-stream" \
+                        --data-binary @"$PLAN_FILE" \
+                        "https://storage.googleapis.com/upload/storage/v1/b/${GCS_BUCKET}/o?uploadType=media&name=${PLAN_OBJECT}")
+
+                      if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+                        echo "Plan uploaded successfully (HTTP ${HTTP_CODE})"
+                      else
+                        echo "ERROR: Upload failed with HTTP ${HTTP_CODE}"
+                        exit 1
+                      fi
+
+                      export PLAN_GCS_PATH="gs://${GCS_BUCKET}/${PLAN_OBJECT}"
+                    envVariables:
+                      GCLOUD_ACCESS_TOKEN: <+steps.gcp_oidc_token_plan.output.outputVariables.GCLOUD_ACCESS_TOKEN>
+                      STATE_PREFIX: <+steps.tofu_init_plan.output.outputVariables.STATE_PREFIX>
+                    outputVariables:
+                      - name: PLAN_GCS_PATH
+                  timeout: 10m
+                  failureStrategies:
+                    - onFailure:
+                        errors:
+                          - AllErrors
+                        action:
+                          type: Abort
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: Abort
+    - stage:
+        name: Approval
+        identifier: approval_gate
+        description: Manual approval required before bootstrap apply or destroy
+        type: Approval
+        spec:
+          execution:
+            steps:
+              - step:
+                  name: Approve Bootstrap Apply
+                  identifier: approve_bootstrap_apply
+                  type: HarnessApproval
+                  timeout: 1d
+                  spec:
+                    approvalMessage: |-
+                      Please review the tofu plan before proceeding.
+
+                        Action       : <+pipeline.variables.tofu_action>
+                        Scope        : Bootstrap (harness-platform-bootstrap)
+                        Plan artifact: <+stages.bootstrap_plan.spec.execution.steps.upload_plan.output.outputVariables.PLAN_GCS_PATH>
+
+                      Review the plan output in Stage 1 (Bootstrap Plan) and approve only
+                      if the changes are expected and safe to apply.
+                    includePipelineExecutionHistory: true
+                    approvers:
+                      userGroups:
+                        - _project_all_users
+                        - account._account_all_users
+                        - org._organization_all_users
+                      minimumCount: 1
+                      disallowPipelineExecutor: false
+                    approverInputs: []
+        when:
+          pipelineStatus: Success
+          condition: '<+pipeline.variables.tofu_action> != "plan"'
+    - stage:
+        name: Bootstrap Apply
+        identifier: bootstrap_apply
+        description: Download reviewed plan from GCS and apply
+        type: CI
+        spec:
+          cloneCodebase: true
+          caching:
+            enabled: true
+            override: true
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec: {}
+          execution:
+            steps:
+              - step:
+                  type: Plugin
+                  name: GCP OIDC Token
+                  identifier: gcp_oidc_token_apply
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: plugins/gcp-oidc
+                    settings:
+                      project_id: <+pipeline.variables.gcp_project>
+                      pool_id: <+pipeline.variables.gcp_pool_id>
+                      provider_id: <+pipeline.variables.gcp_provider_id>
+                      service_account_email_id: <+pipeline.variables.gcp_service_account_email>
+                      duration: 3600
+                      create_application_credentials_file: false
+                  timeout: 5m
+                  failureStrategies:
+                    - onFailure:
+                        errors:
+                          - AllErrors
+                        action:
+                          type: Abort
+              - step:
+                  type: Run
+                  name: tofu Init
+                  identifier: tofu_init_apply
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: ghcr.io/opentofu/opentofu:latest
+                    shell: Sh
+                    command: |
+                      set -e
+                      cd /harness/harness-platform-bootstrap
+
+                      tofu init \
+                        -backend-config="bucket=<+pipeline.variables.gcs_bucket>" \
+                        -backend-config="prefix=harness/platform_accelerator"
+                    envVariables:
+                      GOOGLE_OAUTH_ACCESS_TOKEN: <+steps.gcp_oidc_token_apply.output.outputVariables.GCLOUD_ACCESS_TOKEN>
+                      TF_VAR_harness_platform_account: <+account.identifier>
+                  timeout: 15m
+                  failureStrategies:
+                    - onFailure:
+                        errors:
+                          - AllErrors
+                        action:
+                          type: Abort
+              - step:
+                  type: Run
+                  name: Download Plan from GCS
+                  identifier: download_plan
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: google/cloud-sdk:slim
+                    shell: Sh
+                    command: |
+                      set -e
+
+                      GCS_BUCKET="<+pipeline.variables.gcs_bucket>"
+                      STATE_PREFIX="harness/platform_accelerator"
+                      EXECUTION_ID="<+pipeline.executionId>"
+                      PLAN_OBJECT="${STATE_PREFIX}/plans/${EXECUTION_ID}.tfplan"
+                      PLAN_FILE="/harness/harness-platform-bootstrap/tfplan"
+
+                      echo "Downloading plan from gs://${GCS_BUCKET}/${PLAN_OBJECT}"
+
+                      ENCODED_OBJECT=$(printf '%s' "$PLAN_OBJECT" | sed 's|/|%2F|g')
+
+                      curl -sf \
+                        -H "Authorization: Bearer $GCLOUD_ACCESS_TOKEN" \
+                        -o "$PLAN_FILE" \
+                        "https://storage.googleapis.com/storage/v1/b/${GCS_BUCKET}/o/${ENCODED_OBJECT}?alt=media"
+
+                      if [ ! -s "$PLAN_FILE" ]; then
+                        echo "ERROR: Downloaded plan file is empty"
+                        exit 1
+                      fi
+
+                      echo "Plan downloaded successfully ($(wc -c < "$PLAN_FILE") bytes)"
+                    envVariables:
+                      GCLOUD_ACCESS_TOKEN: <+steps.gcp_oidc_token_apply.output.outputVariables.GCLOUD_ACCESS_TOKEN>
+                  timeout: 10m
+                  failureStrategies:
+                    - onFailure:
+                        errors:
+                          - AllErrors
+                        action:
+                          type: Abort
+              - step:
+                  type: Run
+                  name: tofu Apply
+                  identifier: tofu_apply_step
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: ghcr.io/opentofu/opentofu:latest
+                    shell: Sh
+                    command: |
+                      set -e
+                      cd /harness/harness-platform-bootstrap
+
+                      export TF_VAR_git_connector_credentials=$(printf '%s' \
+                        '{"platform_configs":{"http_credentials":{"github_app":{"application_id":"<+pipeline.variables.github_app_application_id>","installation_id":"<+pipeline.variables.github_app_installation_id>","private_key_ref":"<+pipeline.variables.github_app_private_key_ref>"}},"api_auth":{"github_app_api":true}}}')
+
+                      # Apply the exact plan that was reviewed
+                      tofu apply -auto-approve tfplan
+                    envVariables:
+                      HARNESS_PLATFORM_API_KEY: <+secrets.getValue("harness_bootstrap_api_key")>
+                      HARNESS_ACCOUNT_ID: <+account.identifier>
+                      GOOGLE_OAUTH_ACCESS_TOKEN: <+steps.gcp_oidc_token_apply.output.outputVariables.GCLOUD_ACCESS_TOKEN>
+                      TF_VAR_harness_platform_account: <+account.identifier>
+                      TF_VAR_organization_name: harness_platform_accelerator
+                      TF_VAR_gcs_bucket: <+pipeline.variables.gcs_bucket>
+                      TF_VAR_gcp_project: <+pipeline.variables.gcp_project>
+                      TF_VAR_gcp_pool_id: <+pipeline.variables.gcp_pool_id>
+                      TF_VAR_gcp_provider_id: <+pipeline.variables.gcp_provider_id>
+                      TF_VAR_gcp_service_account_email: <+pipeline.variables.gcp_service_account_email>
+                  timeout: 60m
+                  failureStrategies:
+                    - onFailure:
+                        errors:
+                          - AllErrors
+                        action:
+                          type: Abort
+        when:
+          pipelineStatus: Success
+          condition: '<+pipeline.variables.tofu_action> != "plan"'
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: Abort

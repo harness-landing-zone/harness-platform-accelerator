@@ -1,0 +1,77 @@
+---
+########################
+# Harness Role — Release Manager
+#
+# Scope  : Project
+# Purpose: Extends the Developer role with production-gate powers:
+#            - core_environment_rollback   : roll back a live prod environment
+#            - core_deploymentfreeze_manage: create/edit/delete deployment freeze windows
+#            - core_deploymentfreeze_override: bypass an active freeze for emergency releases
+#
+# Approval Step usage:
+#   This role alone does NOT grant the ability to approve a Harness Approval Step.
+#   Approval is governed by the user group listed directly on the Approval Step in
+#   the pipeline YAML.  Add the corresponding Harness user group (e.g.
+#   Project_1_Release_Managers) to that step.  A user needs:
+#     1. core_pipeline_view (included here) — to see the waiting step in the UI
+#     2. Membership of the approver user group on the step — to click Approve/Reject
+#
+# NOTE on same-pipeline multi-environment deployments:
+#   Harness evaluates environment ABAC **before** execution (pre-flight check).
+#   For a single pipeline that touches both PreProduction and Production stages,
+#   all principals who trigger the pipeline must have access to ALL environments
+#   the pipeline uses.  The Approval Step is the human gate that prevents developers
+#   from advancing to the prod stage — not RBAC alone.
+########################
+name: Release_Manager
+description: Extends the Developer role with production-gate powers
+permissions: [
+  # ── Pipeline ──────────────────────────────────────────────────────────────
+  "core_pipeline_view",
+  "core_pipeline_execute",
+  "core_pipeline_abort",
+
+  # ── Environments (all types including Production) ──────────────────────────
+  "core_environment_view",
+  "core_environment_access",
+  "core_environment_rollback",          # roll back a production deployment
+
+  # ── Deployment Freeze (prod gates) ─────────────────────────────────────────
+  "core_deploymentfreeze_manage",       # create/edit freeze windows around prod
+  "core_deploymentfreeze_override",     # bypass an active freeze for emergency deploys
+
+  # ── Environment Groups ─────────────────────────────────────────────────────
+  "core_environmentgroup_view",
+  "core_environmentgroup_access",
+
+  # ── Services ──────────────────────────────────────────────────────────────
+  "core_service_view",
+  "core_service_access",
+
+  # ── Connectors ────────────────────────────────────────────────────────────
+  "core_connector_view",
+  "core_connector_access",
+
+  # ── Secrets ───────────────────────────────────────────────────────────────
+  "core_secret_view",
+  "core_secret_access",
+
+  # ── Templates ─────────────────────────────────────────────────────────────
+  "core_template_view",
+  "core_template_access",
+  "core_template_copy",
+
+  # ── Input Sets ────────────────────────────────────────────────────────────
+  "core_inputset_view",
+  "core_inputset_edit",
+  "core_inputset_delete",
+
+  # ── Variables / Files ─────────────────────────────────────────────────────
+  "core_variable_view",
+  "core_file_view",
+  "core_file_access",
+
+  # ── Delegates (view only) ─────────────────────────────────────────────────
+  "core_delegate_view",
+  "core_delegateconfiguration_view",
+]

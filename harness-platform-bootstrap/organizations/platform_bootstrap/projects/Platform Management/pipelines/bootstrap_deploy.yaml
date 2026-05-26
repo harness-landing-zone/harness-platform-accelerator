@@ -1,0 +1,6 @@
+name: Harness Accelerator Bootstrap
+description: Maintains the harness-platform-bootstrap infrastructure — plan, approve, then apply or destroy. Run locally first (tofu init -backend-config=...) to initialise GCS state.
+git_connector_ref: org.platform_configs
+git_repo_name: hsf-custom-harness-template-library
+git_file_path: harness-platform-bootstrap/.harness/bootstrap_deploy.yaml
+git_branch: tofu

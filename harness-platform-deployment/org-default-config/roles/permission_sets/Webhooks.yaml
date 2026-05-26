@@ -1,0 +1,7 @@
+---
+permissions: [
+  # Webhooks
+  "core_gitxWebhooks_delete",
+  "core_gitxWebhooks_edit",
+  "core_gitxWebhooks_view",
+]

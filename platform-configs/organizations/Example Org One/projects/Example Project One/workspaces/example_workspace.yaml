@@ -1,0 +1,25 @@
+---
+name: "Example IaCM Workspace"
+description: "Example workspace for the Example Project"
+
+tags:
+  owner: platform-team
+  purpose: example
+
+provisioner_type: opentofu
+provisioner_version: "1.9.0"
+cost_estimation_enabled: false
+
+repository: example/harness-eks-module
+repository_connector: github_connector
+repository_path: .
+repository_branch: main
+
+workspace_connectors:
+  - connector_ref: aws_account1
+    type: aws
+
+terraform_variables:
+  - key: region
+    value: eu-west-1
+    value_type: string

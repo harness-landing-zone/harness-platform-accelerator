@@ -1,0 +1,15 @@
+---
+permissions: [
+  "core_environment_access",
+  "core_environment_view",
+  "core_environmentgroup_access",
+  "core_environmentgroup_view",
+  "core_pipeline_delete",
+  "core_pipeline_edit",
+  "core_pipeline_execute",
+  "core_pipeline_view",
+  "core_service_access",
+  "core_service_delete",
+  "core_service_edit",
+  "core_service_view",
+]

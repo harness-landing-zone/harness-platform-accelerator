@@ -1,0 +1,13 @@
+---
+permissions: [
+  # Governance Policy
+  "core_governancePolicySets_create",
+  "core_governancePolicySets_delete",
+  "core_governancePolicySets_edit",
+  "core_governancePolicySets_evaluate",
+  "core_governancePolicySets_view",
+  "core_governancePolicy_create",
+  "core_governancePolicy_delete",
+  "core_governancePolicy_edit",
+  "core_governancePolicy_view",
+]

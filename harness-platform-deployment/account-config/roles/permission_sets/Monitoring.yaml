@@ -1,0 +1,8 @@
+---
+permissions: [
+  # Monitoring
+  "monitoring_monitoringagent_create",
+  "monitoring_monitoringagent_delete",
+  "monitoring_monitoringagent_edit",
+  "monitoring_monitoringagent_view",
+]

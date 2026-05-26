@@ -1,0 +1,6 @@
+description: "Example Project One in Example Org Two Organization"
+name: "Example Project One"
+default_project_template: templates-two
+tags:
+  purpose: Testing Org Yaml Creation
+  owner: platform-team

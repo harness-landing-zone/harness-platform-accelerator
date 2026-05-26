@@ -1,0 +1,8 @@
+---
+# Requires Feature Flag - PIE_INPUTSET_RBAC_PERMISSIONS
+permissions: [
+  # Input Sets
+  "core_inputset_delete",
+  "core_inputset_edit",
+  "core_inputset_view",
+]

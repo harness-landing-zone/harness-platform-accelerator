@@ -1,0 +1,18 @@
+---
+permissions: [
+  # Software Engineering Insights
+  "sei_seicollections_create",
+  "sei_seicollections_delete",
+  "sei_seicollections_edit",
+  "sei_seicollections_view",
+  "sei_seiinsights_create",
+  "sei_seiinsights_delete",
+  "sei_seiinsights_edit",
+  "sei_seiinsights_view",
+  "sei_seiinsightscategory_view",
+  "sei_seipanorama_view",
+  "sei_seiteams_create",
+  "sei_seiteams_delete",
+  "sei_seiteams_edit",
+  "sei_seiteams_view",
+]

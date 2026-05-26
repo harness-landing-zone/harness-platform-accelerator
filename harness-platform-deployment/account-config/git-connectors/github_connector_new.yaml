@@ -1,0 +1,18 @@
+name: New Modules for Github
+identifier: github_connector_new
+type: Github
+description: "Github connector for Modules repository"
+tags:
+  type: git
+  provider: github
+execute_on_delegate: false
+connector_url: https://github.com/example
+connection_type: Account
+validation_repo: harness-eks-module
+http_credentials:
+  github_app:
+    application_id: "123456789"
+    installation_id: "9081929321"
+    private_key_ref: account.public-modules
+api_auth:
+  github_app_api: true

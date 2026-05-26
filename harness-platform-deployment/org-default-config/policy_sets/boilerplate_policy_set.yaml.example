@@ -1,0 +1,36 @@
+---
+########################
+# Governance PolicySet for Harness
+#
+# The policy name
+# When creating a new Harness Policy, the following is used:
+# - name = The name of this file. Hyphens and underscores are converted into spaces
+# - identifier = The name of this file. Hyphens and spaces are converted into underscores
+#
+# The contents of this file should be a complete, non-templated Rego Policy
+#
+# Current list of options with supported actions
+# - connector (Connector) - onsave
+# - custom (Custom. Generally to evaluate pipeline step information) - onstep
+# - flag (Feature Flag) - onsave
+# - pipeline (Pipelines) - onrun, onsave
+# - secret (Harness Secrets) - onsave
+# - template (Templates) - onsave
+# - terraformPlan (IACM Terraform Plan) - afterTerraformPlan
+# - terraformPlanCost (IACM Terraform Plan Cost) - afterTerraformPlan
+# - workspace (IACM Workspaces) - onsave
+#
+########################
+type: pipeline
+action: onsave
+policies: []
+# List of Key/Value pairs containing a single element per Policy to include.
+# The creation of PolicySets occurs after the creation of Policies. When using
+# a policy created by this template, the identifier must match the following
+# criteria to be found and valid:
+# - Hyphens and spaces are converted into underscores
+#
+# identifier (String) Unique identifier of the policy
+# severity (String) Policy failure response - 'warning' for continuation, 'error' for exit
+#   - identifier: my_valid_policy
+#     severity: error

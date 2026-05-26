@@ -1,0 +1,13 @@
+---
+permissions: [
+  # Environments
+  "core_environment_access",
+  "core_environment_delete",
+  "core_environment_edit",
+  "core_environment_rollback",
+  "core_environment_view",
+  "core_environmentgroup_access",
+  "core_environmentgroup_delete",
+  "core_environmentgroup_edit",
+  "core_environmentgroup_view",
+]

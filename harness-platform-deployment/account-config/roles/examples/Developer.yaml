@@ -1,0 +1,25 @@
+---
+permissions: [
+  "core_connector_access",
+  "core_connector_view",
+  "core_delegate_view",
+  "core_delegateconfiguration_view",
+  "core_environment_access",
+  "core_environment_view",
+  "core_environmentgroup_access",
+  "core_environmentgroup_view",
+  "core_file_access",
+  "core_file_delete",
+  "core_file_edit",
+  "core_file_view",
+  "core_pipeline_view",
+  "core_pipeline_execute",
+  "core_secret_access",
+  "core_secret_view",
+  "core_service_access",
+  "core_service_view",
+  "core_template_access",
+  "core_template_copy",
+  "core_template_view",
+  "core_variable_view"
+]

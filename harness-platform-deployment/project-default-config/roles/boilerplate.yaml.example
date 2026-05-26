@@ -1,0 +1,11 @@
+---
+# Harness Role Example file
+#
+# When creating a new Harness Role, the following is used:
+# - name = The name of this file. Hyphens and underscores are converted into spaces
+# - identifier = The name of this file. Hyphens and spaces are converted into underscores
+# - permissions = The list of permissions this role should support
+#
+# Detailed Permissions list is found in the sub-directory - `permission_sets`
+permissions: [
+]

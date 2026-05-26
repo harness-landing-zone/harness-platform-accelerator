@@ -1,0 +1,26 @@
+---
+permissions: [
+  # GitOps
+  "gitops_agent_delete",
+  "gitops_agent_edit",
+  "gitops_agent_view",
+  "gitops_application_delete",
+  "gitops_application_edit",
+  "gitops_application_sync",
+  "gitops_application_view",
+  "gitops_applicationset_delete",
+  "gitops_applicationset_edit",
+  "gitops_applicationset_view",
+  "gitops_cert_delete",
+  "gitops_cert_edit",
+  "gitops_cert_view",
+  "gitops_cluster_delete",
+  "gitops_cluster_edit",
+  "gitops_cluster_view",
+  "gitops_gpgkey_delete",
+  "gitops_gpgkey_edit",
+  "gitops_gpgkey_view",
+  "gitops_repository_delete",
+  "gitops_repository_edit",
+  "gitops_repository_view",
+]

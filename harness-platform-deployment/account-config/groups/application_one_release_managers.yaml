@@ -1,0 +1,18 @@
+---
+########################
+# SSO Configuration (uncomment to enable):
+# linked_sso_type: "SAML"
+# linked_sso_id: <your-sso-provider-id>
+# sso_group_id: <idp-release-managers-group-id>
+########################
+description: "Release Managers for Application One  approve and deploy to production"
+Name: App One Release Managers
+tags:
+  purpose: ReleaseManagers
+  project: Organisasion Test Project1
+  managed_by: solutions-factory
+
+role_bindings:
+  # Account-level shared resource visibility (connectors, secrets, templates)
+  - role: Shared_Resource_Access
+    resource_group: _all_account_level_resources

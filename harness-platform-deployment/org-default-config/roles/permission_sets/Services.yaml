@@ -1,0 +1,8 @@
+---
+permissions: [
+  # Services
+  "core_service_access",
+  "core_service_delete",
+  "core_service_edit",
+  "core_service_view",
+]

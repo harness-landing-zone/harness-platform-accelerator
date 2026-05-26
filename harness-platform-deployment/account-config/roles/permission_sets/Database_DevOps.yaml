@@ -1,0 +1,10 @@
+---
+permissions: [
+  # Database DevOps
+  "dbops_instance_delete",
+  "dbops_instance_edit",
+  "dbops_instance_view",
+  "dbops_schema_delete",
+  "dbops_schema_edit",
+  "dbops_schema_view",
+]

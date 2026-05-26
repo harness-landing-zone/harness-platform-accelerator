@@ -1,0 +1,67 @@
+---
+########################
+# Harness Resource Group — Production Environments
+#
+# Scope  : Project (Project 1 / Test Organisasion)
+# Purpose: Scopes resource access to Production environments only.
+#
+# USE CASES:
+#   1. Pair with the Release_Manager role to give production-specific powers
+#      (rollback, deployment freeze management) scoped ONLY to prod — without
+#      granting broad access to all non-prod resources.
+#   2. Grant SRE/Ops teams the ability to act on production resources directly
+#      (hotfix deploy, emergency rollback) without non-prod write access.
+#   3. Can be combined with PreProduction_Environments on the same user group
+#      to build a full "all environments" binding from two explicit RGs, or
+#      simply use _all_project_level_resources when full-scope access is intended.
+#
+# Environments covered (type = Production):
+#   - prod  (identifier: prod)
+#
+# Environments excluded (type = PreProduction):
+#   - dev   (identifier: dev)
+#   - qa    (identifier: qa)
+#   - test  (identifier: test)
+########################
+description: "Project-scoped resource group — Production environment only"
+
+tags:
+  purpose: ProductionAccess
+  managed_by: solutions-factory
+
+include_child_scopes: false
+
+resource_filters:
+  # Pipelines — allow execute so release managers can trigger production pipeline runs
+  - type: PIPELINE
+
+  # Services — allow access so pipeline stages can reference service definitions
+  - type: SERVICE
+
+  # Environments — ABAC filter: Production type only
+  - type: ENVIRONMENT
+    filters:
+      - name: type
+        values:
+          - Production
+
+  # Environment Groups
+  - type: ENVIRONMENT_GROUP
+  
+  # Connectors — allow access so pipeline steps can resolve cloud/git credentials
+  - type: CONNECTOR
+
+  # Secrets — allow access so pipeline steps can resolve secret references
+  - type: SECRET
+
+  # Templates — allow access/copy so pipelines can reference shared stage templates
+  - type: TEMPLATE
+
+  # Input Sets
+  - type: INPUT_SET
+
+  # File Store
+  - type: FILE
+
+  # Variables
+  - type: VARIABLE

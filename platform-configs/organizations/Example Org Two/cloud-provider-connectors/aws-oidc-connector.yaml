@@ -1,0 +1,12 @@
+type: aws
+name: "AWS OIDC Connector"
+description: "Account-scoped Harness AWS connector using OIDC"
+execute_on_delegate: true
+force_delete: false
+tags:
+  owner: platform-team
+  purpose: deployment
+
+oidc_authentication:
+  iam_role_arn: "arn:aws:iam::1234567890:role/platform-team-oidc"
+  region: "eu-west-2"

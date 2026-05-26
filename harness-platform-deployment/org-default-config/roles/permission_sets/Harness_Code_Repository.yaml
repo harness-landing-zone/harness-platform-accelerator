@@ -1,0 +1,11 @@
+---
+permissions: [
+  # Harness Code Repository
+  "code_repo_create",
+  "code_repo_delete",
+  "code_repo_edit",
+  "code_repo_push",
+  "code_repo_reportCommitCheck",
+  "code_repo_review",
+  "code_repo_view",
+]

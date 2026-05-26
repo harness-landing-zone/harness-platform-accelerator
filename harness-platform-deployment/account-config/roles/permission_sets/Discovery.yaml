@@ -1,0 +1,8 @@
+---
+permissions: [
+  # Discovery
+  "servicediscovery_networkmap_create",
+  "servicediscovery_networkmap_delete",
+  "servicediscovery_networkmap_edit",
+  "servicediscovery_networkmap_view",
+]

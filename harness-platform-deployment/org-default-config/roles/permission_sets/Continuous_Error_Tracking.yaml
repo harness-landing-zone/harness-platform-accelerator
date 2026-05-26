@@ -1,0 +1,11 @@
+---
+permissions: [
+  # Continuous Error Tracking
+  "cet_agents_view",
+  "cet_criticalevent_create",
+  "cet_criticalevent_delete",
+  "cet_criticalevent_view",
+  "cet_token_create",
+  "cet_token_revoke",
+  "cet_token_view",
+]

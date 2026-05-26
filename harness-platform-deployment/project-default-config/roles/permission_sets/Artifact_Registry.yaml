@@ -1,0 +1,11 @@
+---
+permissions: [
+  # Artifact Registry
+  "artifact_artregistry_delete",
+  "artifact_artregistry_deleteartifact",
+  "artifact_artregistry_downloadartifact",
+  "artifact_artregistry_edit",
+  "artifact_artregistry_quarantineartifact",
+  "artifact_artregistry_uploadartifact",
+  "artifact_artregistry_view",
+]

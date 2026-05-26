@@ -1,0 +1,3 @@
+local-tests.tf
+test.auto.tfvars
+local.auto.tfvars

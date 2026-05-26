@@ -1,0 +1,117 @@
+---
+name: ECS Service
+description: ECS Service managed by Solutions Factory
+tags:
+  type: ecs
+  runtime: fargate
+yaml:
+  service:
+    name: ECS Service
+    identifier: ecs
+    serviceDefinition:
+      type: ECS
+      spec:
+        manifests:
+          # Task Definition — describes the container(s), CPU/memory, and IAM role
+          - manifest:
+              identifier: ecs_task_definition
+              type: EcsTaskDefinition
+              spec:
+                store:
+                  type: Github
+                  spec:
+                    connectorRef: <+input>
+                    gitFetchType: Branch
+                    paths:
+                      - ecs/task-definition.json
+                    repoName: <+input>
+                    branch: main
+
+          # Service Definition — describes the ECS service (desired count, load balancer, etc.)
+          - manifest:
+              identifier: ecs_definition
+              type: EcsServiceDefinition
+              spec:
+                store:
+                  type: Github
+                  spec:
+                    connectorRef: <+input>
+                    gitFetchType: Branch
+                    paths:
+                      - ecs/service-definition.json
+                    repoName: <+input>
+                    branch: main
+
+          # Scalable Target — defines auto-scaling boundaries (optional, remove if not needed)
+          - manifest:
+              identifier: ecs_scalable_target
+              type: EcsScalableTargetDefinition
+              spec:
+                store:
+                  type: Github
+                  spec:
+                    connectorRef: <+input>
+                    gitFetchType: Branch
+                    paths:
+                      - ecs/scalable-target.json
+                    repoName: <+input>
+                    branch: main
+
+          # Scaling Policy — defines the auto-scaling policy (optional, remove if not needed)
+          - manifest:
+              identifier: ecs_scaling_policy
+              type: EcsScalingPolicyDefinition
+              spec:
+                store:
+                  type: Github
+                  spec:
+                    connectorRef: <+input>
+                    gitFetchType: Branch
+                    paths:
+                      - ecs/scaling-policy.json
+                    repoName: <+input>
+                    branch: main
+
+        artifacts:
+          primary:
+            primaryArtifactRef: <+input>
+            sources:
+              # ECR image — tag is resolved at pipeline runtime via <+input> or expression
+              - identifier: ecr_image
+                type: Ecr
+                spec:
+                  connectorRef: <+input>
+                  region: us-east-1
+                  imagePath: <+input>
+                  tag: <+input>
+
+        # Service-level variables — these can be overridden per environment
+        # using harness_platform_overrides resources in the environments config
+        variables:
+          - name: ecs_cluster_name
+            type: String
+            value: <+input>
+            description: "ECS cluster name — overridden per environment"
+          - name: vpc_id
+            type: String
+            value: <+input>
+            description: "VPC ID for the ECS service — overridden per environment"
+          - name: container_port
+            type: String
+            value: "8080"
+            description: "Port exposed by the container"
+          - name: desired_count
+            type: String
+            value: "2"
+            description: "Desired number of ECS task instances"
+          - name: cpu
+            type: String
+            value: "256"
+            description: "Fargate task CPU units (256 = 0.25 vCPU)"
+          - name: memory
+            type: String
+            value: "512"
+            description: "Fargate task memory in MiB"
+
+    gitOpsEnabled: false
+

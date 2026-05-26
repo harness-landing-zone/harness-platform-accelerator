@@ -1,0 +1,14 @@
+---
+# SSO Configuration
+# linked_sso_type: "SAML" # Required for SSO link
+# linked_sso_id: # Required
+# sso_group_id: # Should be the SSO Group ID to map
+Name: IACM Admins
+description: IACM Admins Group that allow to Create IACM Modules to the registry
+tags:
+  purpose: IACM Admins
+role_bindings:
+- role: Shared_Resource_Access
+  resource_group: _all_account_level_resources
+- role: IACM_Admins
+  resource_group: _all_resources_including_child_scopes

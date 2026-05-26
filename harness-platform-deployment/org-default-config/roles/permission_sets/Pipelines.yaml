@@ -1,0 +1,10 @@
+---
+permissions: [
+  # Pipelines
+  "core_pipeline_abort",
+  "core_pipeline_create",
+  "core_pipeline_delete",
+  "core_pipeline_edit",
+  "core_pipeline_execute",
+  "core_pipeline_view",
+]

@@ -1,0 +1,31 @@
+---
+########################
+# Harness User Group Management
+#
+# The UserGroup name
+# When creating a new Harness UserGroup, the following is used:
+# - name = The name of this file. Hyphens and underscores are converted into spaces
+# - identifier = The name of this file. Hyphens and spaces are converted into underscores
+#
+# *** Special note about creating role bindings for built-in groups. ***
+# Harness groups that begin with an underscore are considered native and platform managed items.
+# If you would like to modify the role bindings of those groups, you can add to the bindings by
+# creating a new file in this directory using the exact identifier.
+########################
+# SSO Configuration
+# linked_sso_type: "SAML" # Required for SSO link
+# linked_sso_id: # Required
+# sso_group_id: # Should be the SSO Group ID to map
+tags:
+  purpose: AccountAdministrators
+role_bindings: []
+# List of Key/Value pairs containing a single element per RoleBinding to include.
+# The creation of UserGroups occurs after the creation of Roles and Resource
+# Groups. When using a policy created by this template, the identifier must match
+# the following criteria to be found and valid:
+# - Hyphens and spaces are converted into underscores
+#
+# role (String) Registered Harness Role identifier at this scope
+# resource_group (String) Registered Harness Resource Group identifier at this scope
+#   - role: _account_viewer
+#     resource_group: _all_account_level_resources

@@ -1,0 +1,17 @@
+---
+# SSO Configuration
+# linked_sso_type: "SAML" # Required for SSO link
+# linked_sso_id: # Required
+# sso_group_id: # Should be the SSO Group ID to map
+Name: IACM Developers
+description: IACM Developers group allowed to Use Workspaces in the Inherited Org or Project they belong
+tags:
+  purpose: IACM Admins
+role_bindings:
+- role: shared_resource_access
+  resource_group: _all_account_level_resources
+
+
+
+
+

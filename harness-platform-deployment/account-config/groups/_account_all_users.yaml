@@ -1,0 +1,10 @@
+---
+# SSO Configuration
+# linked_sso_type: "SAML" # Required for SSO link
+# linked_sso_id: # Required
+# sso_group_id: # Should be the SSO Group ID to map
+tags:
+  purpose: Account-Viewers
+role_bindings:
+  - role: Shared_Resource_Access
+    resource_group: _all_account_level_resources
