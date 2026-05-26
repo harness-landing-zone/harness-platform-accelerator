@@ -1,0 +1,18 @@
+---
+name: "Example Git-Synced Service"
+description: "Service definition stored and synced from Git repository"
+tags:
+  service_type: kubernetes
+  team: platform
+  sync_type: git
+
+# Git-based service definition (stored in repository)
+git_details:
+  store_type: REMOTE
+  connector_ref: account.github_connector  # Reference to GitHub connector
+  repo_name: my-org/service-definitions    # Repository name (for account/org connectors)
+  file_path: services/example-service.yaml # Path to service YAML in repository
+  branch: main                             # Branch to sync from (optional)
+
+# Note: The 'yaml' field is NOT used when git_details is present.
+# The service definition is pulled from the Git repository at the specified path.

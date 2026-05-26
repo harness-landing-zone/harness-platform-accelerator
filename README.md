@@ -352,6 +352,223 @@ cross_account_access:
   external_id: "harness-external-id"
 ```
 
+**GCP Connector (3 auth methods):**
+
+**OIDC (Workload Identity Federation - recommended for GKE):**
+
+```yaml
+type: gcp
+name: "GCP OIDC Connector"
+oidc_authentication:
+  workload_pool_id: "projects/123456789/locations/global/workloadIdentityPools/harness-pool"
+  provider_id: "harness-provider"
+  gcp_project_id: "my-gcp-project"
+  service_account_email: "harness-sa@my-gcp-project.iam.gserviceaccount.com"
+  delegate_selectors:
+    - gke-delegate
+```
+
+**Manual (service account key):**
+
+```yaml
+type: gcp
+name: "GCP Service Account Connector"
+manual_authentication:
+  secret_key_ref: "account.gcp_service_account_key"
+  delegate_selectors:
+    - my-delegate
+```
+
+**Inherit from delegate:**
+
+```yaml
+type: gcp
+name: "GCP Delegate Connector"
+inherit_from_delegate:
+  delegate_selectors:
+    - gke-delegate
+```
+
+---
+
+## Services (`services/*.yaml`)
+
+Services define deployment targets for CD pipelines and can be created at **any scope level** (account, organization, or project):
+
+- **Account-level services**: Shared across all organizations and projects
+- **Organization-level services**: Shared across all projects within an organization
+- **Project-level services**: Specific to a single project
+
+Services can be defined inline (YAML in the config) or synced from Git.
+
+### Inline Service (Kubernetes)
+
+```yaml
+name: "My Kubernetes Service"
+description: "Application service with K8s manifests"
+tags:
+  service_type: kubernetes
+  team: platform
+
+yaml:
+  service:
+    name: My Kubernetes Service
+    identifier: my_kubernetes_service
+    serviceDefinition:
+      type: Kubernetes
+      spec:
+        manifests:
+          - manifest:
+              identifier: kubernetes_manifest
+              type: K8sManifest
+              spec:
+                store:
+                  type: Harness
+                  spec:
+                    files:
+                      - /manifests/deployment.yaml
+                      - /manifests/service.yaml
+                skipResourceVersioning: false
+        artifacts:
+          primary:
+            primaryArtifactRef: <+input>
+            sources:
+              - identifier: docker_image
+                type: DockerRegistry
+                spec:
+                  connectorRef: account.docker_connector
+                  imagePath: myorg/myapp
+                  tag: <+input>
+        variables:
+          - name: replicas
+            type: String
+            value: "3"
+          - name: namespace
+            type: String
+            value: <+input>
+    gitOpsEnabled: false
+```
+
+### Git-Synced Service
+
+Service definition stored in Git and synced via connector. Enables GitOps workflow.
+
+```yaml
+name: "Git-Synced Service"
+description: "Service definition from Git repository"
+tags:
+  service_type: kubernetes
+  sync_type: git
+
+git_details:
+  store_type: REMOTE
+  connector_ref: account.github_connector
+  repo_name: my-org/service-definitions
+  file_path: services/my-service.yaml
+  branch: main  # Optional - defaults to connector's default branch
+```
+
+> **Note**: When `git_details` is present, the `yaml` field is ignored. Service definition is pulled from Git.
+
+### Native Helm Service
+
+```yaml
+name: "Helm Chart Service"
+description: "Native Helm deployment"
+tags:
+  service_type: native_helm
+
+yaml:
+  service:
+    name: Helm Chart Service
+    identifier: helm_chart_service
+    serviceDefinition:
+      type: NativeHelm
+      spec:
+        manifests:
+          - manifest:
+              identifier: helm_chart
+              type: HelmChart
+              spec:
+                store:
+                  type: Http
+                  spec:
+                    connectorRef: account.helm_connector
+                chartName: my-chart
+                chartVersion: <+input>
+                helmVersion: V3
+        variables:
+          - name: release_name
+            type: String
+            value: my-app
+```
+
+### Service Scoping Examples
+
+**Account-level service** (available to all orgs/projects):
+```yaml
+# In harness-platform-deployment/account-config/services/shared-service.yaml
+name: "Shared Platform Service"
+description: "Account-level shared service"
+tags:
+  scope: account
+  shared: "true"
+yaml:
+  service:
+    name: Shared Platform Service
+    identifier: shared_platform_service
+    # ... service definition
+```
+
+**Organization-level service** (available to all projects in the org):
+```yaml
+# In platform-configs/organizations/<org>/services/org-service.yaml
+name: "Organization Shared Service"
+description: "Org-level service for all projects"
+tags:
+  scope: organization
+yaml:
+  service:
+    name: Organization Shared Service
+    identifier: org_shared_service
+    # ... service definition
+```
+
+**Project-level service** (specific to one project):
+```yaml
+# In platform-configs/organizations/<org>/projects/<project>/services/app.yaml
+name: "My Application"
+description: "Project-specific service"
+yaml:
+  service:
+    name: My Application
+    identifier: my_application
+    # ... service definition
+```
+
+### Service Types Supported
+
+- **Kubernetes** — K8s manifests, Kustomize, Helm from manifest
+- **NativeHelm** — Helm charts from Helm repository
+- **ServerlessAwsLambda** — AWS Lambda functions
+- **AzureWebApp** — Azure App Service
+- **ECS** — AWS ECS/Fargate services
+- **SSH** — Traditional server deployments
+- **WinRM** — Windows server deployments
+
+### Common Service Fields
+
+| Field | Required | Description |
+|---|:---:|---|
+| `name` | ✓ | Display name |
+| `description` | — | Service description |
+| `tags` | — | Key-value tags |
+| `yaml` | ✓* | Inline service definition (HCL map converted to YAML) |
+| `git_details` | ✓* | Git sync configuration (mutually exclusive with `yaml`) |
+| `force_delete` | — | Force delete even if service is referenced (default: false) |
+
+\* Either `yaml` or `git_details` is required, but not both.
+
 ---
 
 ## Modules Reference

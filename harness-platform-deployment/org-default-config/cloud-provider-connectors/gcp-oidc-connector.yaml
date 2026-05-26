@@ -1,0 +1,16 @@
+---
+type: gcp
+name: "GCP OIDC Connector"
+description: "GCP connector using Workload Identity Federation (OIDC)"
+tags:
+  provider: gcp
+  auth_type: oidc
+
+# OIDC (Workload Identity Federation) - Recommended for GKE
+oidc_authentication:
+  workload_pool_id: "projects/123456789/locations/global/workloadIdentityPools/harness-pool"
+  provider_id: "harness-provider"
+  gcp_project_id: "my-gcp-project"
+  service_account_email: "harness-sa@my-gcp-project.iam.gserviceaccount.com"
+  delegate_selectors:
+    - gke-delegate

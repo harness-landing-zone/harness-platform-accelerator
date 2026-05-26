@@ -1,0 +1,12 @@
+---
+type: gcp
+name: "GCP Delegate Connector"
+description: "GCP connector inheriting from delegate's service account"
+tags:
+  provider: gcp
+  auth_type: inherit
+
+# Inherit from delegate (uses delegate's attached service account)
+inherit_from_delegate:
+  delegate_selectors:
+    - gke-delegate

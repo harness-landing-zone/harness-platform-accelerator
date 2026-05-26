@@ -1,0 +1,47 @@
+---
+name: "Organization Shared Service"
+description: "Org-level service shared across all projects in this organization"
+tags:
+  scope: organization
+  service_type: kubernetes
+  shared: "true"
+
+yaml:
+  service:
+    name: Organization Shared Service
+    identifier: org_shared_service
+    serviceDefinition:
+      type: Kubernetes
+      spec:
+        manifests:
+          - manifest:
+              identifier: org_manifest
+              type: K8sManifest
+              spec:
+                store:
+                  type: Harness
+                  spec:
+                    files:
+                      - /org-shared/deployment.yaml
+                      - /org-shared/service.yaml
+                skipResourceVersioning: false
+        artifacts:
+          primary:
+            primaryArtifactRef: <+input>
+            sources:
+              - identifier: org_docker_image
+                type: DockerRegistry
+                spec:
+                  connectorRef: org.docker_connector
+                  imagePath: orgname/shared-service
+                  tag: <+input>
+        variables:
+          - name: org_id
+            type: String
+            description: "Organization identifier"
+            value: <+org.identifier>
+          - name: replicas
+            type: String
+            description: "Number of replicas"
+            value: "2"
+    gitOpsEnabled: false
