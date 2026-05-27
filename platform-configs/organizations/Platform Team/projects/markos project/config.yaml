@@ -1,0 +1,8 @@
+---
+description: "Markos project in Platform Team organization"
+name: "markos project"
+default_project_template: templates
+tags:
+  purpose: Development
+  owner: markos
+  managed_by: terraform

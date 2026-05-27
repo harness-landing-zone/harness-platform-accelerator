@@ -1,0 +1,9 @@
+---
+description: "Platform Team organization in Harness Account"
+name: "Platform Team"
+default_org_template: templates
+default_project_template: templates
+tags:
+  purpose: Platform Engineering
+  owner: platform-team
+  managed_by: terraform

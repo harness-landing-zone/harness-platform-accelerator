@@ -1,0 +1,12 @@
+---
+description: "Platform Team administrators with full organization access"
+name: "Platform Team Admins"
+tags:
+  purpose: OrganizationAdministrators
+  managed_by: terraform
+
+role_bindings:
+  - role: _organization_admin
+    resource_group: _all_resources_including_child_scopes
+  - role: _organization_viewer
+    resource_group: _all_resources_including_child_scopes

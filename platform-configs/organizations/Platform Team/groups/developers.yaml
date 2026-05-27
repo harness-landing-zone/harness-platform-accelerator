@@ -1,0 +1,12 @@
+---
+description: "Platform Team developers with project-level access"
+name: "Platform Team Developers"
+tags:
+  purpose: Developers
+  managed_by: terraform
+
+role_bindings:
+  - role: _project_admin
+    resource_group: _all_project_level_resources
+  - role: _project_viewer
+    resource_group: _all_project_level_resources
