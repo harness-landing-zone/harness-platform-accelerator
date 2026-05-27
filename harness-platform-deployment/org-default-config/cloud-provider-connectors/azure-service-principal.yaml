@@ -1,0 +1,14 @@
+name: Azure Service Principal
+description: Azure cloud connector using service principal authentication
+type: azure
+tags:
+  cloud: azure
+  auth_type: service_principal
+  managed_by: platform-team
+
+service_principal:
+  client_id: abc-123-def-456  # Application (client) ID
+  tenant_id: xyz-789-uvw-012  # Directory (tenant) ID
+  secret_ref: account.azure_client_secret  # Reference to secret containing client secret
+  delegate_selectors:
+    - azure-delegate

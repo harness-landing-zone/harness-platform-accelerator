@@ -56,9 +56,36 @@ module "gcp_cloud_provider_connector" {
 
   force_delete = try(each.value.cnf.force_delete, false)
 
-  gcp_connector_oidc_authentication      = try(each.value.cnf.oidc_authentication, null)
-  gcp_connector_manual_authentication    = try(each.value.cnf.manual_authentication, null)
-  gcp_connector_inherit_from_delegate    = try(each.value.cnf.inherit_from_delegate, null)
+  gcp_connector_oidc_authentication   = try(each.value.cnf.oidc_authentication, null)
+  gcp_connector_manual_authentication = try(each.value.cnf.manual_authentication, null)
+  gcp_connector_inherit_from_delegate = try(each.value.cnf.inherit_from_delegate, null)
 
   connector_type = "gcp"
+}
+
+module "azure_cloud_provider_connector" {
+  source = "../cloud-provider-connectors"
+  for_each = {
+    for connector in local.cloud_provider_connectors : connector.identifier => connector
+    if lower(lookup(connector.cnf, "type", "")) == "azure"
+  }
+
+  org_id     = local.resolved_org_id
+  project_id = local.resolved_project_id
+
+  connector_name        = each.value.name
+  connector_identifier  = each.value.identifier
+  connector_description = lookup(each.value.cnf, "description", "Harness Azure connector managed by Solutions Factory")
+  connector_tags = flatten([
+    [for k, v in lookup(each.value.cnf, "tags", {}) : "${k}:${v}"],
+    local.common_tags_tuple
+  ])
+
+  force_delete = try(each.value.cnf.force_delete, false)
+
+  azure_connector_service_principal = try(each.value.cnf.service_principal, null)
+  azure_connector_managed_identity  = try(each.value.cnf.managed_identity, null)
+  azure_connector_certificate       = try(each.value.cnf.certificate, null)
+
+  connector_type = "azure"
 }

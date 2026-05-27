@@ -1,0 +1,14 @@
+name: Azure Certificate Auth
+description: Azure cloud connector using certificate-based authentication
+type: azure
+tags:
+  cloud: azure
+  auth_type: certificate
+  managed_by: platform-team
+
+certificate:
+  client_id: abc-123-def-456  # Application (client) ID
+  tenant_id: xyz-789-uvw-012  # Directory (tenant) ID
+  certificate_ref: account.azure_certificate  # Reference to secret containing certificate
+  delegate_selectors:
+    - azure-delegate

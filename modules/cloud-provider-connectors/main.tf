@@ -182,3 +182,84 @@ resource "harness_platform_connector_gcp" "gcp" {
     }
   }
 }
+
+resource "harness_platform_connector_azure" "azure" {
+  count = var.connector_type == "azure" ? 1 : 0
+
+  name = var.connector_name
+  identifier = (
+    var.connector_identifier != null && trimspace(var.connector_identifier) != ""
+    ? var.connector_identifier
+    : replace(replace(lower(var.connector_name), " ", "_"), "-", "_")
+  )
+  description = (
+    var.connector_description != null && trimspace(var.connector_description) != ""
+    ? var.connector_description
+    : null
+  )
+  tags = toset(try(var.connector_tags, []))
+
+  # Optional scoping (account-level if both are null)
+  org_id     = var.org_id != null && trimspace(var.org_id) != "" ? var.org_id : null
+  project_id = var.project_id != null && trimspace(var.project_id) != "" ? var.project_id : null
+
+  force_delete = try(var.force_delete, null)
+
+  # Auth mode: Service Principal (most common)
+  dynamic "credentials" {
+    for_each = var.azure_connector_service_principal != null ? [var.azure_connector_service_principal] : []
+
+    content {
+      type = "Secret"
+
+      azure_client_secret_key {
+        client_id          = credentials.value.client_id
+        tenant_id          = credentials.value.tenant_id
+        secret_ref         = credentials.value.secret_ref
+        delegate_selectors = try(credentials.value.delegate_selectors, [])
+      }
+    }
+  }
+
+  # Auth mode: Managed Identity (for delegates running on Azure)
+  dynamic "credentials" {
+    for_each = var.azure_connector_managed_identity != null ? [var.azure_connector_managed_identity] : []
+
+    content {
+      type = "ManagedIdentity"
+
+      azure_managed_identity {
+        client_id          = credentials.value.client_id
+        tenant_id          = credentials.value.tenant_id
+        delegate_selectors = credentials.value.delegate_selectors
+      }
+    }
+  }
+
+  # Auth mode: Certificate (less common, for certificate-based authentication)
+  dynamic "credentials" {
+    for_each = var.azure_connector_certificate != null ? [var.azure_connector_certificate] : []
+
+    content {
+      type = "Certificate"
+
+      azure_client_certificate_key {
+        client_id          = credentials.value.client_id
+        tenant_id          = credentials.value.tenant_id
+        certificate_ref    = credentials.value.certificate_ref
+        delegate_selectors = try(credentials.value.delegate_selectors, [])
+      }
+    }
+  }
+
+  lifecycle {
+    precondition {
+      condition = (
+        (var.azure_connector_service_principal != null ? 1 : 0) +
+        (var.azure_connector_managed_identity != null ? 1 : 0) +
+        (var.azure_connector_certificate != null ? 1 : 0)
+      ) == 1
+      error_message = "Exactly one Azure auth mode must be enabled: service_principal, managed_identity, or certificate."
+    }
+  }
+}

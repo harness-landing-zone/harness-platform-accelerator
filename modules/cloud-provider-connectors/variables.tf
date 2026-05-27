@@ -1,11 +1,11 @@
 variable "connector_type" {
-  description = "Cloud provider type for the connector. Supported values: aws, gcp."
+  description = "Cloud provider type for the connector. Supported values: aws, gcp, azure."
   type        = string
   default     = "aws"
 
   validation {
-    condition     = contains(["aws", "gcp"], var.connector_type)
-    error_message = "connector_type must be one of: aws, gcp."
+    condition     = contains(["aws", "gcp", "azure"], var.connector_type)
+    error_message = "connector_type must be one of: aws, gcp, azure."
   }
 }
 
@@ -171,6 +171,40 @@ variable "gcp_connector_inherit_from_delegate" {
   description = "Authentication inherited from the Harness delegate running on GCP."
   type = object({
     delegate_selectors = set(string)
+  })
+  default = null
+}
+
+# ── Azure Authentication ──────────────────────────────────────────────────────
+
+variable "azure_connector_service_principal" {
+  description = "Service principal authentication for Azure connector."
+  type = object({
+    client_id          = string
+    tenant_id          = string
+    secret_ref         = string
+    delegate_selectors = optional(set(string), [])
+  })
+  default = null
+}
+
+variable "azure_connector_managed_identity" {
+  description = "Managed identity authentication for Azure connector (delegate running on Azure)."
+  type = object({
+    client_id          = string
+    tenant_id          = string
+    delegate_selectors = set(string)
+  })
+  default = null
+}
+
+variable "azure_connector_certificate" {
+  description = "Certificate-based authentication for Azure connector."
+  type = object({
+    client_id          = string
+    tenant_id          = string
+    certificate_ref    = string
+    delegate_selectors = optional(set(string), [])
   })
   default = null
 }

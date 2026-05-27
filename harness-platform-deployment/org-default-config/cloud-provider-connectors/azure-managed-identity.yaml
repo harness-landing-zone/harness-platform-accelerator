@@ -1,0 +1,13 @@
+name: Azure Managed Identity
+description: Azure cloud connector using managed identity (for delegates on Azure VMs)
+type: azure
+tags:
+  cloud: azure
+  auth_type: managed_identity
+  managed_by: platform-team
+
+managed_identity:
+  client_id: abc-123-def-456  # Managed identity client ID
+  tenant_id: xyz-789-uvw-012  # Directory (tenant) ID
+  delegate_selectors:
+    - azure-vm-delegate  # Delegate must run on Azure VM with managed identity
