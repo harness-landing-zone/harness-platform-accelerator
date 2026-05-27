@@ -1,0 +1,12 @@
+name: Default Region
+description: Default AWS region for deployments
+type: String
+
+spec:
+  value_type: FIXED
+  fixed_value: us-east-1
+  allowed_values:
+    - us-east-1
+    - us-west-2
+    - eu-west-1
+    - ap-southeast-1

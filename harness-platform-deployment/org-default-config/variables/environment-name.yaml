@@ -1,0 +1,7 @@
+name: Environment Name
+description: Current environment name (uses expression)
+type: String
+
+spec:
+  value_type: EXPRESSION
+  fixed_value: <+env.name>

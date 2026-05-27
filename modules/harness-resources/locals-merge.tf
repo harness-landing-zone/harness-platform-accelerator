@@ -72,6 +72,12 @@ locals {
       patterns   = ["*.yaml"]
       key_fn     = "path"
     }
+    variables = {
+      global_dir = "${local.source_directory}/variables"
+      org_dir    = "${local.config_directory}/variables"
+      patterns   = ["*.yaml"]
+      key_fn     = "path"
+    }
   }
 
   # Organization scope only: org-level secrets.

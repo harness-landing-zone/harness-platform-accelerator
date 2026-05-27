@@ -1,0 +1,8 @@
+name: Max Replicas
+description: Maximum number of replicas for auto-scaling
+type: Number
+
+spec:
+  value_type: FIXED
+  fixed_value: "10"
+  regex: "^[0-9]+$"

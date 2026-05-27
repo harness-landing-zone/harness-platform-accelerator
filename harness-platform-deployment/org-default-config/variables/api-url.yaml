@@ -1,0 +1,7 @@
+name: API URL
+description: Backend API URL (runtime input for environment-specific values)
+type: String
+
+spec:
+  value_type: RUNTIME
+  default_value: https://api.dev.mycompany.com

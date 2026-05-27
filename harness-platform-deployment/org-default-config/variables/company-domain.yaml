@@ -1,0 +1,7 @@
+name: Company Domain
+description: Default company domain for applications
+type: String
+
+spec:
+  value_type: FIXED
+  fixed_value: mycompany.com
