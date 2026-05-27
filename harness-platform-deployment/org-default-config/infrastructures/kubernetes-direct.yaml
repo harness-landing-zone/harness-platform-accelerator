@@ -1,0 +1,16 @@
+name: Kubernetes Direct
+description: Direct Kubernetes cluster infrastructure for deployments
+type: KubernetesDirect
+deployment_type: Kubernetes
+env_id: production  # Reference to environment identifier
+tags:
+  type: kubernetes
+  managed_by: platform-team
+
+yaml:
+  infrastructureDefinition:
+    type: KubernetesDirect
+    spec:
+      connectorRef: account.k8s_cluster  # Reference to Kubernetes connector
+      namespace: <+input>  # Runtime input for namespace
+      releaseName: <+service.name>-<+env.name>  # Dynamic release name

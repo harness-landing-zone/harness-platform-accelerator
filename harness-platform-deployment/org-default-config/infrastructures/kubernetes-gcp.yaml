@@ -1,0 +1,18 @@
+name: Kubernetes GCP
+description: GCP GKE cluster infrastructure for deployments
+type: KubernetesGcp
+deployment_type: Kubernetes
+env_id: production
+tags:
+  type: kubernetes
+  cloud: gcp
+  managed_by: platform-team
+
+yaml:
+  infrastructureDefinition:
+    type: KubernetesGcp
+    spec:
+      connectorRef: account.gcp_connector  # Reference to GCP connector
+      cluster: <+input>  # Runtime input for cluster name
+      namespace: <+input>
+      releaseName: <+service.name>-<+env.name>

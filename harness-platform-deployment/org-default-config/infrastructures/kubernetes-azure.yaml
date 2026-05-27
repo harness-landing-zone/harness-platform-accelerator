@@ -1,0 +1,20 @@
+name: Kubernetes Azure
+description: Azure AKS cluster infrastructure for deployments
+type: KubernetesAzure
+deployment_type: Kubernetes
+env_id: production
+tags:
+  type: kubernetes
+  cloud: azure
+  managed_by: platform-team
+
+yaml:
+  infrastructureDefinition:
+    type: KubernetesAzure
+    spec:
+      connectorRef: account.azure_connector  # Reference to Azure connector
+      subscriptionId: <+input>
+      resourceGroup: <+input>
+      cluster: <+input>  # Runtime input for AKS cluster name
+      namespace: <+input>
+      releaseName: <+service.name>-<+env.name>

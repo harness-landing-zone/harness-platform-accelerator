@@ -1,0 +1,18 @@
+name: Kubernetes AWS
+description: AWS EKS cluster infrastructure for deployments
+type: KubernetesAws
+deployment_type: Kubernetes
+env_id: production
+tags:
+  type: kubernetes
+  cloud: aws
+  managed_by: platform-team
+
+yaml:
+  infrastructureDefinition:
+    type: KubernetesAws
+    spec:
+      connectorRef: account.aws_connector  # Reference to AWS connector
+      cluster: <+input>  # Runtime input for EKS cluster name
+      namespace: <+input>
+      releaseName: <+service.name>-<+env.name>

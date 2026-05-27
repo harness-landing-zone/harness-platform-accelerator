@@ -1,0 +1,17 @@
+name: AWS ECS
+description: AWS ECS container infrastructure for deployments
+type: ECS
+deployment_type: ECS
+env_id: production
+tags:
+  type: ecs
+  cloud: aws
+  managed_by: platform-team
+
+yaml:
+  infrastructureDefinition:
+    type: ECS
+    spec:
+      connectorRef: account.aws_connector  # Reference to AWS connector
+      region: <+input>  # Runtime input for AWS region
+      cluster: <+input>  # Runtime input for ECS cluster name

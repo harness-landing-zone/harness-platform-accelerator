@@ -1,0 +1,17 @@
+name: AWS Lambda
+description: AWS Lambda serverless infrastructure
+type: ServerlessAwsLambda
+deployment_type: ServerlessAwsLambda
+env_id: production
+tags:
+  type: serverless
+  cloud: aws
+  managed_by: platform-team
+
+yaml:
+  infrastructureDefinition:
+    type: ServerlessAwsLambda
+    spec:
+      connectorRef: account.aws_connector  # Reference to AWS connector
+      region: <+input>  # Runtime input for AWS region
+      stage: <+env.name>

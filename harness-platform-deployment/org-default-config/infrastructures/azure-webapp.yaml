@@ -1,0 +1,18 @@
+name: Azure Web App
+description: Azure App Service infrastructure for web applications
+type: AzureWebApp
+deployment_type: AzureWebApp
+env_id: production
+tags:
+  type: webapp
+  cloud: azure
+  managed_by: platform-team
+
+yaml:
+  infrastructureDefinition:
+    type: AzureWebApp
+    spec:
+      connectorRef: account.azure_connector  # Reference to Azure connector
+      subscriptionId: <+input>
+      resourceGroup: <+input>
+      webAppName: <+input>  # Runtime input for web app name

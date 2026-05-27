@@ -60,6 +60,12 @@ locals {
       patterns   = ["*.yaml"]
       key_fn     = "path"
     }
+    infrastructures = {
+      global_dir = "${local.source_directory}/infrastructures"
+      org_dir    = "${local.config_directory}/infrastructures"
+      patterns   = ["*.yaml"]
+      key_fn     = "path"
+    }
   }
 
   # Organization scope only: org-level secrets.
