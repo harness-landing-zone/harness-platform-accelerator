@@ -1,0 +1,15 @@
+name: AWS ECR
+description: Amazon Elastic Container Registry connector
+type: ecr
+url: https://123456789.dkr.ecr.us-east-1.amazonaws.com
+delegate_selectors:
+  - aws-delegate
+tags:
+  registry: ecr
+  cloud: aws
+  managed_by: platform-team
+
+credentials:
+  aws:
+    aws_connector_ref: account.aws_connector  # Reference to AWS cloud connector
+    region: us-east-1

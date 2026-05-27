@@ -1,0 +1,15 @@
+name: Harbor Registry
+description: Self-hosted Harbor container registry
+type: docker
+docker_type: Harbor
+url: https://harbor.mycompany.com
+delegate_selectors:
+  - primary-delegate
+tags:
+  registry: harbor
+  managed_by: platform-team
+
+credentials:
+  username_password:
+    username: harbor-robot
+    password_ref: account.harbor_password

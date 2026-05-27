@@ -66,6 +66,12 @@ locals {
       patterns   = ["*.yaml"]
       key_fn     = "path"
     }
+    artifact-connectors = {
+      global_dir = "${local.source_directory}/artifact-connectors"
+      org_dir    = "${local.config_directory}/artifact-connectors"
+      patterns   = ["*.yaml"]
+      key_fn     = "path"
+    }
   }
 
   # Organization scope only: org-level secrets.

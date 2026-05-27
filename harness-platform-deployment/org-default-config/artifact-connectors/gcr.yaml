@@ -1,0 +1,14 @@
+name: GCP GCR
+description: Google Container Registry connector
+type: gcr
+url: https://gcr.io/my-gcp-project
+delegate_selectors:
+  - gcp-delegate
+tags:
+  registry: gcr
+  cloud: gcp
+  managed_by: platform-team
+
+credentials:
+  gcp:
+    gcp_connector_ref: account.gcp_connector  # Reference to GCP cloud connector

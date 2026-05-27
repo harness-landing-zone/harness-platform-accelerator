@@ -1,0 +1,15 @@
+name: DockerHub
+description: DockerHub public and private registry connector
+type: docker
+docker_type: DockerHub
+url: https://index.docker.io/v2/
+tags:
+  registry: dockerhub
+  managed_by: platform-team
+
+# Optional: Add credentials for private repositories
+# Leave credentials block commented for anonymous/public access
+credentials:
+  username_password:
+    username_ref: account.dockerhub_username  # Reference to secret containing username
+    password_ref: account.dockerhub_token     # Reference to secret containing token/password

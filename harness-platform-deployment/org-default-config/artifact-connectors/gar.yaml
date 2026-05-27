@@ -1,0 +1,14 @@
+name: GCP Artifact Registry
+description: Google Artifact Registry connector (next-gen GCR)
+type: gcr
+url: https://us-east1-docker.pkg.dev/my-gcp-project/my-repo
+delegate_selectors:
+  - gcp-delegate
+tags:
+  registry: gar
+  cloud: gcp
+  managed_by: platform-team
+
+credentials:
+  gcp:
+    gcp_connector_ref: account.gcp_connector  # Reference to GCP cloud connector

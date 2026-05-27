@@ -1,0 +1,17 @@
+name: Azure ACR
+description: Azure Container Registry connector
+type: acr
+url: https://myregistry.azurecr.io
+delegate_selectors:
+  - azure-delegate
+tags:
+  registry: acr
+  cloud: azure
+  managed_by: platform-team
+
+credentials:
+  azure:
+    azure_connector_ref: account.azure_connector  # Reference to Azure cloud connector
+    subscription_id: abc-123-def-456
+    registry_name: myregistry
+    resource_group: my-resource-group
