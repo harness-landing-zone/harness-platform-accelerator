@@ -1,0 +1,20 @@
+name: Terraform Automation
+description: Service account for Terraform/OpenTofu automation and IaC workflows
+email: terraform@service.harness.io
+tags:
+  purpose: iac
+  tool: terraform
+  managed_by: platform-team
+
+apikeys:
+  - identifier: terraform_apikey
+    name: Terraform API Key
+    description: API key for Terraform automation
+    create_token: true
+    token_identifier: terraform_token
+    token_name: Terraform Token
+
+role_assignments:
+  - resource_group_identifier: _all_resources_including_child_scopes
+    role_identifier: _organization_admin
+    managed: false

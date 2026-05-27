@@ -1,0 +1,27 @@
+name: External Integration
+description: Service account for third-party integrations and webhooks
+email: external-integration@service.harness.io
+tags:
+  purpose: integration
+  managed_by: platform-team
+
+# Multiple API keys for different integrations
+apikeys:
+  - identifier: integration_primary
+    name: Primary Integration Key
+    description: Primary API key for external integrations
+    create_token: true
+    token_identifier: integration_primary_token
+    token_name: Primary Integration Token
+
+  - identifier: integration_secondary
+    name: Secondary Integration Key
+    description: Backup API key for external integrations
+    create_token: true
+    token_identifier: integration_secondary_token
+    token_name: Secondary Integration Token
+
+role_assignments:
+  - resource_group_identifier: _all_project_level_resources
+    role_identifier: _project_viewer
+    managed: false

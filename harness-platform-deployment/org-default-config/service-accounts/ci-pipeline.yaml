@@ -1,0 +1,21 @@
+name: CI Pipeline Service Account
+description: Service account for CI/CD pipeline automation
+email: ci-pipeline@service.harness.io
+tags:
+  purpose: ci-cd
+  managed_by: platform-team
+
+# API Keys for this service account
+apikeys:
+  - identifier: ci_pipeline_apikey
+    name: CI Pipeline API Key
+    description: Primary API key for CI pipeline
+    create_token: true  # Auto-create token
+    token_identifier: ci_pipeline_token
+    token_name: CI Pipeline Token
+
+# Role assignments for this service account
+role_assignments:
+  - resource_group_identifier: _all_project_level_resources
+    role_identifier: _project_admin
+    managed: false

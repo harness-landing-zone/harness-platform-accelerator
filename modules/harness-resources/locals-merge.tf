@@ -78,6 +78,12 @@ locals {
       patterns   = ["*.yaml"]
       key_fn     = "path"
     }
+    service-accounts = {
+      global_dir = "${local.source_directory}/service-accounts"
+      org_dir    = "${local.config_directory}/service-accounts"
+      patterns   = ["*.yaml"]
+      key_fn     = "path"
+    }
   }
 
   # Organization scope only: org-level secrets.

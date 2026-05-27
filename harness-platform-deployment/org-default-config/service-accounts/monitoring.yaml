@@ -1,0 +1,20 @@
+name: Monitoring Service Account
+description: Read-only service account for monitoring and observability tools
+email: monitoring@service.harness.io
+tags:
+  purpose: monitoring
+  access: read-only
+  managed_by: platform-team
+
+apikeys:
+  - identifier: monitoring_apikey
+    name: Monitoring API Key
+    description: Read-only API key for monitoring tools
+    create_token: true
+    token_identifier: monitoring_token
+    token_name: Monitoring Token
+
+role_assignments:
+  - resource_group_identifier: _all_resources_including_child_scopes
+    role_identifier: _organization_viewer
+    managed: false
