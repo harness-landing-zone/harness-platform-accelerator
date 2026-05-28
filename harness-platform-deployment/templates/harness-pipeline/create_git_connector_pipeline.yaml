@@ -1,0 +1,165 @@
+pipeline:
+  name: Create Git Connector
+  identifier: create_git_connector
+  projectIdentifier: platform_management
+  orgIdentifier: harness_platform_accelerator
+  description: |
+    Renders a git-connectors/*.yaml from IDP inputs and commits it back to the
+    accelerator repo at platform-configs/organizations/<org>/projects/<project>/
+    git-connectors/<name>.yaml. The existing tofu_deploy_iacm trigger picks it
+    up and applies the change.
+  tags:
+    purpose: idp_self_serve
+  properties:
+    ci:
+      codebase:
+        connectorRef: account.generic
+        repoName: harness-platform-accelerator-private
+        build:
+          type: branch
+          spec:
+            branch: new
+  variables:
+    - name: target_org
+      type: String
+      required: true
+      value: <+input>
+    - name: target_project
+      type: String
+      required: true
+      value: <+input>
+    - name: connector_file_name
+      type: String
+      required: true
+      value: <+input>
+    - name: connector_display_name
+      type: String
+      required: false
+      value: <+input>.default(IDP Github Connector)
+    - name: connector_url
+      type: String
+      required: false
+      value: <+input>.default(https://github.com/example)
+    - name: validation_repo
+      type: String
+      required: false
+      value: <+input>.default()
+    - name: application_id
+      type: String
+      required: true
+      value: <+input>
+    - name: installation_id
+      type: String
+      required: true
+      value: <+input>
+    - name: private_key_ref
+      type: String
+      required: true
+      value: <+input>
+  stages:
+    - stage:
+        name: Render and Commit
+        identifier: render_and_commit
+        type: CI
+        spec:
+          cloneCodebase: true
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec: {}
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Render connector yaml
+                  identifier: render_connector
+                  spec:
+                    connectorRef: Docker_Registry
+                    image: alpine:3.20
+                    shell: Sh
+                    command: |-
+                      set -eu
+                      apk add --no-cache gettext >/dev/null
+
+                      DEST_DIR="/harness/platform-configs/organizations/${TARGET_ORG}/projects/${TARGET_PROJECT}/git-connectors"
+                      DEST_FILE="${DEST_DIR}/${CONNECTOR_FILE_NAME}.yaml"
+
+                      mkdir -p "$DEST_DIR"
+                      envsubst < /harness/harness-platform-deployment/templates/git-connector.yaml.tmpl > "$DEST_FILE"
+
+                      echo "--- Rendered ${DEST_FILE} ---"
+                      cat "$DEST_FILE"
+                    envVariables:
+                      APPLICATION_ID: <+pipeline.variables.application_id>
+                      INSTALLATION_ID: <+pipeline.variables.installation_id>
+                      PRIVATE_KEY_REF: <+pipeline.variables.private_key_ref>
+                      CONNECTOR_NAME: <+pipeline.variables.connector_display_name>
+                      CONNECTOR_URL: <+pipeline.variables.connector_url>
+                      VALIDATION_REPO: <+pipeline.variables.validation_repo>
+                      TARGET_ORG: <+pipeline.variables.target_org>
+                      TARGET_PROJECT: <+pipeline.variables.target_project>
+                      CONNECTOR_FILE_NAME: <+pipeline.variables.connector_file_name>
+                  timeout: 5m
+                  failureStrategies:
+                    - onFailure:
+                        errors:
+                          - AllErrors
+                        action:
+                          type: Abort
+              - step:
+                  type: Run
+                  name: Commit and push
+                  identifier: commit_and_push
+                  spec:
+                    connectorRef: Docker_Registry
+                    image: alpine/git:latest
+                    shell: Sh
+                    command: |-
+                      set -eu
+                      cd /harness
+
+                      cat > "${HOME}/.netrc" <<EOF
+                      machine ${DRONE_NETRC_MACHINE}
+                      login ${DRONE_NETRC_USERNAME}
+                      password ${DRONE_NETRC_PASSWORD}
+                      EOF
+                      chmod 600 "${HOME}/.netrc"
+
+                      git config user.email "idp-bot@harness.local"
+                      git config user.name  "IDP Self-Serve Bot"
+
+                      REL="platform-configs/organizations/${TARGET_ORG}/projects/${TARGET_PROJECT}/git-connectors/${CONNECTOR_FILE_NAME}.yaml"
+                      git add "$REL"
+
+                      if git diff --cached --quiet; then
+                        echo "No changes — file already up to date."
+                        exit 0
+                      fi
+
+                      git commit -m "idp: add git connector ${CONNECTOR_FILE_NAME} (${TARGET_ORG}/${TARGET_PROJECT})"
+                      git push origin HEAD:new
+                    envVariables:
+                      TARGET_ORG: <+pipeline.variables.target_org>
+                      TARGET_PROJECT: <+pipeline.variables.target_project>
+                      CONNECTOR_FILE_NAME: <+pipeline.variables.connector_file_name>
+                  timeout: 5m
+                  failureStrategies:
+                    - onFailure:
+                        errors:
+                          - AllErrors
+                        action:
+                          type: Abort
+          caching:
+            enabled: false
+            paths: []
+          buildIntelligence:
+            enabled: false
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: Abort
+        description: ""
