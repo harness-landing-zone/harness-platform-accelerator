@@ -1,0 +1,337 @@
+pipeline:
+  name: Create Git Connector
+  identifier: create_git_connector
+  projectIdentifier: platform_management
+  orgIdentifier: harness_platform_accelerator
+  description: |
+    Renders a git-connectors/*.yaml from IDP inputs and commits it back to the
+    accelerator repo at platform-configs/organizations/<org>/projects/<project>/
+    git-connectors/<name>.yaml. The existing tofu_deploy_iacm trigger picks it
+    up and applies the change.
+  tags:
+    purpose: idp_self_serve
+  properties:
+    ci:
+      codebase:
+        connectorRef: account.generic
+        repoName: harness-platform-accelerator-private
+        build:
+          type: branch
+          spec:
+            branch: new
+  variables:
+    - name: target_org
+      type: String
+      required: true
+      value: <+input>
+    - name: target_project
+      type: String
+      required: true
+      value: <+input>
+    - name: connector_file_name
+      type: String
+      required: true
+      value: <+input>
+    - name: connector_display_name
+      type: String
+      required: false
+      value: <+input>.default(IDP Github Connector)
+    - name: connector_url
+      type: String
+      required: false
+      value: <+input>.default(https://github.com/example)
+    - name: validation_repo
+      type: String
+      required: false
+      value: <+input>.default()
+    - name: application_id
+      type: String
+      required: true
+      value: <+input>
+    - name: installation_id
+      type: String
+      required: true
+      value: <+input>
+    - name: github_private_key
+      type: String
+      description: GitHub App private key
+      required: true
+      value: <+input>
+    - name: connection_type
+      type: String
+      default: Account
+      description: Connection type - Account or Repo
+      required: true
+      value: <+input>.allowedValues(Account,Repo)
+    - name: onPrem
+      type: String
+      default: "false"
+      description: Is the GitHub instance on-premise?
+      required: false
+      value: <+input>
+  stages:
+    - stage:
+        name: Validate Inputs
+        identifier: validate_inputs
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  type: ShellScript
+                  name: Validate Configuration
+                  identifier: validate_configuration
+                  timeout: 1m
+                  spec:
+                    shell: Bash
+                    source:
+                      type: Inline
+                      spec:
+                        script: |
+                          #!/bin/bash
+                          set -e
+
+                          echo "=== Validating GitHub Connector Configuration ==="
+
+                          # Validate connector identifier format
+                          CONNECTOR_ID="<+pipeline.variables.connector_file_name>"
+                          if [[ ! "$CONNECTOR_ID" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+                            echo "ERROR: Invalid connector identifier format. Must start with letter/underscore and contain only alphanumeric characters and underscores."
+                            exit 1
+                          fi
+
+                          # Validate GitHub URL format
+                          GITHUB_URL="<+pipeline.variables.connector_url>"
+                          if [[ ! "$GITHUB_URL" =~ ^https?:// ]]; then
+                            echo "ERROR: Invalid GitHub URL. Must start with http:// or https://"
+                            exit 1
+                          fi
+
+                          # Validate connection type
+                          CONN_TYPE="<+pipeline.variables.connection_type>"
+                          if [[ "$CONN_TYPE" != "Account" && "$CONN_TYPE" != "Repo" ]]; then
+                            echo "ERROR: Invalid connection type. Must be 'Account' or 'Repo'"
+                            exit 1
+                          fi
+
+                          # Validate projectId is provided
+                          PROJECT_ID="<+pipeline.variables.target_project>"
+                          if [[ -z "$PROJECT_ID" || "$PROJECT_ID" == "<+input>" ]]; then
+                            echo "ERROR: target_project is required to determine target suborg folder."
+                            exit 1
+                          fi
+
+                          # Validate orgId is provided
+                          ORG_ID="<+pipeline.variables.target_org>"
+                          if [[ -z "$ORG_ID" || "$ORG_ID" == "<+input>" ]]; then
+                            echo "ERROR: target_org is required to determine target organization."
+                            exit 1
+                          fi
+
+                          echo "✓ Connector Name: <+pipeline.variables.connector_display_name>"
+                          echo "✓ Connector ID: $CONNECTOR_ID"
+                          echo "✓ GitHub URL: $GITHUB_URL"
+                          echo "✓ Connection Type: $CONN_TYPE"
+                          echo "✓ Project/Suborg: $PROJECT_ID"
+                          echo ""
+                          echo "=== Validation Passed ==="
+        tags: {}
+    - stage:
+        name: create secret and yaml file
+        identifier: create_secret_and_yaml_file
+        description: ""
+        type: CI
+        spec:
+          cloneCodebase: true
+          caching:
+            enabled: false
+            override: true
+            paths: []
+          buildIntelligence:
+            enabled: false
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: org.GKE_Delegates
+              namespace: harness
+              automountServiceAccountToken: true
+              nodeSelector: {}
+              os: Linux
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Create secret
+                  identifier: create_secret
+                  spec:
+                    connectorRef: account.docker_hub
+                    image: alpine/openssl:3.5.6
+                    shell: Sh
+                    command: |-
+                      #!/bin/sh
+                      set -e
+
+                      apk add --no-cache curl >/dev/null
+
+                      # Write PEM content to file
+                      printf '%b\n' "$PEM_CONTENT" > /tmp/original.pem
+
+                      # Convert to PKCS8 format
+                      openssl pkcs8 -topk8 -inform PEM -outform PEM -in /tmp/original.pem -out /tmp/converted-github-app.pem -nocrypt
+
+                      if [[ ! -s /tmp/converted-github-app.pem ]]; then
+                        echo "ERROR: PKCS8 conversion failed — output file is empty."
+                        exit 1
+                      fi
+
+                      echo "✓ PEM key converted to PKCS8 format successfully."
+
+                      # Create the secret at project level via Harness API (v2)
+                      printf '{"secret":{"type":"SecretFile","name":"%s","identifier":"%s","orgIdentifier":"%s","projectIdentifier":"%s","spec":{"secretManagerIdentifier":"harnessSecretManager"}}}' \
+                        "$CONNECTOR_ID" "$CONNECTOR_ID" "$ORG_ID" "$PROJECT_ID" > /tmp/secret_spec.json
+
+                      HTTP_CODE=$(curl -s -o /tmp/create_secret_response.json -w "%{http_code}" \
+                        -H "x-api-key: ${API_KEY}" \
+                        "https://seb.harness.io/gateway/ng/api/v2/secrets/files?accountIdentifier=${ACCOUNT_ID}&orgIdentifier=${ORG_ID}&projectIdentifier=${PROJECT_ID}" \
+                        -F "spec=@/tmp/secret_spec.json;type=application/json" \
+                        -F "file=@/tmp/converted-github-app.pem")
+
+                      if [[ "$HTTP_CODE" == "201" || "$HTTP_CODE" == "200" ]]; then
+                        echo "✓ Secret '${CONNECTOR_ID}' created successfully at project level (org=${ORG_ID}, project=${PROJECT_ID})."
+                      else
+                        echo "ERROR: Failed to create secret. HTTP ${HTTP_CODE}"
+                        cat /tmp/create_secret_response.json
+                        exit 1
+                      fi
+
+                      # Cleanup
+                      rm -f /tmp/original.pem /tmp/converted-github-app.pem
+                    envVariables:
+                      TARGET_PROJECT: <+pipeline.variables.target_project>
+                      TARGET_ORG: <+pipeline.variables.target_org>
+                      CONNECTOR_ID: <+pipeline.variables.connector_file_name>
+                      ACCOUNT_ID: <+account.identifier>
+                      PEM_CONTENT: <+pipeline.variables.github_private_key>
+                      API_KEY: <+secrets.getValue("secret ref")>
+                  timeout: 5m
+                  failureStrategies:
+                    - onFailure:
+                        errors:
+                          - AllErrors
+                        action:
+                          type: Abort
+              - step:
+                  type: Run
+                  name: Render connector yaml
+                  identifier: render_connector
+                  spec:
+                    connectorRef: Docker_Registry
+                    image: alpine:3.20
+                    shell: Sh
+                    command: |-
+                      set -eu
+                      apk add --no-cache gettext >/dev/null
+
+                      DEST_DIR="/harness/platform-configs/organizations/${TARGET_ORG}/projects/${TARGET_PROJECT}/git-connectors"
+                      DEST_FILE="${DEST_DIR}/${CONNECTOR_FILE_NAME}.yaml"
+
+                      mkdir -p "$DEST_DIR"
+                      envsubst < /harness/harness-platform-deployment/templates/git-connector.yaml.tmpl > "$DEST_FILE"
+
+                      if [ "$ON_PREM" = "true" ]; then
+                        printf '\ndelegate_selectors:\n  - ONPREM\n' >> "$DEST_FILE"
+                      fi
+
+                      echo "--- Rendered ${DEST_FILE} ---"
+                      cat "$DEST_FILE"
+                    envVariables:
+                      APPLICATION_ID: <+pipeline.variables.application_id>
+                      INSTALLATION_ID: <+pipeline.variables.installation_id>
+                      PRIVATE_KEY_REF: <+pipeline.variables.connector_file_name>
+                      CONNECTOR_NAME: <+pipeline.variables.connector_display_name>
+                      CONNECTOR_URL: <+pipeline.variables.connector_url>
+                      VALIDATION_REPO: <+pipeline.variables.validation_repo>
+                      TARGET_ORG: <+pipeline.variables.target_org>
+                      TARGET_PROJECT: <+pipeline.variables.target_project>
+                      CONNECTOR_FILE_NAME: <+pipeline.variables.connector_file_name>
+                      ON_PREM: <+pipeline.variables.onPrem>
+                  timeout: 5m
+                  failureStrategies:
+                    - onFailure:
+                        errors:
+                          - AllErrors
+                        action:
+                          type: Abort
+              - step:
+                  type: Run
+                  name: Commit and push
+                  identifier: commit_and_push
+                  spec:
+                    connectorRef: Docker_Registry
+                    image: alpine/git:latest
+                    shell: Sh
+                    command: |-
+                      set -eu
+                      cd /harness
+
+                      cat > "${HOME}/.netrc" <<EOF
+                      machine ${DRONE_NETRC_MACHINE}
+                      login ${DRONE_NETRC_USERNAME}
+                      password ${DRONE_NETRC_PASSWORD}
+                      EOF
+                      chmod 600 "${HOME}/.netrc"
+
+                      git config user.email "idp-bot@harness.local"
+                      git config user.name  "IDP Self-Serve Bot"
+
+                      REL="platform-configs/organizations/${TARGET_ORG}/projects/${TARGET_PROJECT}/git-connectors/${CONNECTOR_FILE_NAME}.yaml"
+                      git add "$REL"
+
+                      if git diff --cached --quiet; then
+                        echo "No changes — file already up to date."
+                        exit 0
+                      fi
+
+                      git commit -m "idp: add git connector ${CONNECTOR_FILE_NAME} (${TARGET_ORG}/${TARGET_PROJECT})"
+                      git push origin HEAD:new
+                    envVariables:
+                      TARGET_ORG: <+pipeline.variables.target_org>
+                      TARGET_PROJECT: <+pipeline.variables.target_project>
+                      CONNECTOR_FILE_NAME: <+pipeline.variables.connector_file_name>
+                  timeout: 5m
+                  failureStrategies:
+                    - onFailure:
+                        errors:
+                          - AllErrors
+                        action:
+                          type: Abort
+          caching:
+            enabled: false
+            paths: []
+          buildIntelligence:
+            enabled: false
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: Abort
+    - stage:
+        name: Tofu apply
+        identifier: Tofu_apply
+        description: ""
+        type: Pipeline
+        spec:
+          org: harness_platform_accelerator
+          project: platform_management
+          pipeline: iacm_deploy
+          inputSetReferences: []
+          outputs: []
+          inputs:
+            identifier: iacm_deploy
+            stages:
+              - stage:
+                  identifier: tofu_apply
+                  type: IACM
+                  spec:
+                    workspace: <+pipeline.variables.orgId>_<+pipeline.variables.projectId>
