@@ -1,0 +1,18 @@
+name: ${CONNECTOR_NAME}
+type: Github
+description: "Github connector created via IDP self-serve workflow"
+tags:
+  type: git
+  provider: github
+  managed_by: idp
+execute_on_delegate: ${ON_PREM}
+connector_url: ${CONNECTOR_URL}
+connection_type: ${CONNECTION_TYPE}
+validation_repo: ${VALIDATION_REPO}
+http_credentials:
+  github_app:
+    application_id: "${APPLICATION_ID}"
+    installation_id: "${INSTALLATION_ID}"
+    private_key_ref: ${PRIVATE_KEY_REF}
+api_auth:
+  github_app_api: true
