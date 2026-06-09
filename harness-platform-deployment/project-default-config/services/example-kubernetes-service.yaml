@@ -1,0 +1,48 @@
+---
+name: "Example Kubernetes Service"
+description: "Kubernetes service with inline manifest definition"
+tags:
+  service_type: kubernetes
+  team: platform
+  env: production
+
+# Inline service definition (not stored in Git)
+yaml:
+  service:
+    name: Example Kubernetes Service
+    identifier: example_kubernetes_service
+    serviceDefinition:
+      type: Kubernetes
+      spec:
+        manifests:
+          - manifest:
+              identifier: kubernetes_manifest
+              type: K8sManifest
+              spec:
+                store:
+                  type: Harness
+                  spec:
+                    files:
+                      - /manifests/deployment.yaml
+                      - /manifests/service.yaml
+                skipResourceVersioning: false
+        artifacts:
+          primary:
+            primaryArtifactRef: <+input>
+            sources:
+              - identifier: docker_image
+                type: DockerRegistry
+                spec:
+                  connectorRef: account.docker_connector
+                  imagePath: myorg/myapp
+                  tag: <+input>
+        variables:
+          - name: replicas
+            type: String
+            description: "Number of pod replicas"
+            value: "3"
+          - name: namespace
+            type: String
+            description: "Kubernetes namespace"
+            value: <+input>
+    gitOpsEnabled: false

@@ -1,0 +1,36 @@
+---
+name: "Shared Platform Service"
+description: "Account-level shared service available to all orgs and projects"
+tags:
+  scope: account
+  service_type: kubernetes
+  shared: "true"
+
+yaml:
+  service:
+    name: Shared Platform Service
+    identifier: shared_platform_service
+    serviceDefinition:
+      type: Kubernetes
+      spec:
+        manifests:
+          - manifest:
+              identifier: platform_manifest
+              type: K8sManifest
+              spec:
+                store:
+                  type: Harness
+                  spec:
+                    files:
+                      - /platform/common/deployment.yaml
+                skipResourceVersioning: false
+        variables:
+          - name: platform_version
+            type: String
+            description: "Platform component version"
+            value: "1.0.0"
+          - name: environment
+            type: String
+            description: "Target environment"
+            value: <+input>
+    gitOpsEnabled: false

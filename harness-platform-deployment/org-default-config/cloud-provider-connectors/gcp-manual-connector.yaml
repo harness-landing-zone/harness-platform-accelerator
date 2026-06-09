@@ -1,0 +1,13 @@
+---
+type: gcp
+name: "GCP Service Account Connector"
+description: "GCP connector using service account key"
+tags:
+  provider: gcp
+  auth_type: manual
+
+# Manual authentication (service account key JSON)
+manual_authentication:
+  secret_key_ref: "account.gcp_service_account_key"
+  delegate_selectors:
+    - my-delegate

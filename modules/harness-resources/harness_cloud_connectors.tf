@@ -32,4 +32,33 @@ module "aws_cloud_provider_connector" {
   aws_connector_equal_jitter_backoff_strategy = try(each.value.cnf.equal_jitter_backoff_strategy, null)
   aws_connector_fixed_delay_backoff_strategy  = try(each.value.cnf.fixed_delay_backoff_strategy, null)
   aws_connector_full_jitter_backoff_strategy  = try(each.value.cnf.full_jitter_backoff_strategy, null)
+
+  connector_type = "aws"
+}
+
+module "gcp_cloud_provider_connector" {
+  source = "../cloud-provider-connectors"
+  for_each = {
+    for connector in local.cloud_provider_connectors : connector.identifier => connector
+    if lower(lookup(connector.cnf, "type", "")) == "gcp"
+  }
+
+  org_id     = local.resolved_org_id
+  project_id = local.resolved_project_id
+
+  connector_name        = each.value.name
+  connector_identifier  = each.value.identifier
+  connector_description = lookup(each.value.cnf, "description", "Harness GCP connector managed by Solutions Factory")
+  connector_tags = flatten([
+    [for k, v in lookup(each.value.cnf, "tags", {}) : "${k}:${v}"],
+    local.common_tags_tuple
+  ])
+
+  force_delete = try(each.value.cnf.force_delete, false)
+
+  gcp_connector_oidc_authentication      = try(each.value.cnf.oidc_authentication, null)
+  gcp_connector_manual_authentication    = try(each.value.cnf.manual_authentication, null)
+  gcp_connector_inherit_from_delegate    = try(each.value.cnf.inherit_from_delegate, null)
+
+  connector_type = "gcp"
 }
