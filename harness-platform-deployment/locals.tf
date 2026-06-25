@@ -24,7 +24,11 @@ locals {
     : toset([])
   )
 
-  resolved_org_name = try(
+  # Case-insensitive match against existing org folders; fall back to the raw
+  # organization_name when no folder matches (new org / no config dir yet).
+  # coalesce — not try — because one([]) returns null (not an error), so try
+  # would keep the null instead of falling back.
+  resolved_org_name = coalesce(
     one([for d in local.org_dir_names : d if lower(d) == lower(var.organization_name)]),
     var.organization_name
   )
