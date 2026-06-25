@@ -2,7 +2,57 @@
 
 OpenTofu/Terraform templates for managing a Harness account, organizations, and projects using the `harness/harness` provider.
 
+---
+
+## 🚀 Start Here — Read This First
+
+> **New to this repo? Read [`harness-platform-bootstrap/README.md`](harness-platform-bootstrap/README.md) before anything else.**
+> It walks through the one-time bootstrap that stands up the platform org, the
+> Platform Management project, the deploy pipelines, and the service account that
+> everything else depends on. Don't run the deployment entrypoint until bootstrap
+> has been applied.
+
+### Entrypoint order
+
+| Step | Path | What it does |
+|---|---|---|
+| 1️⃣ **Start here** | [`harness-platform-bootstrap/`](harness-platform-bootstrap/README.md) | Run **once** — creates the platform org/project, deployer service account, git connector, and the `tofu_deploy` / `tofu_deploy_iacm` pipelines. |
+| 2️⃣ | `harness-platform-deployment/` | Day-to-day deployment of orgs/projects/resources, driven by the `scope_level` variable (`account` \| `organization` \| `project`). |
+| — | `modules/` | Consolidated `harness-resources` module (+ git/cloud connectors, iacm-workspaces). Not run directly. |
+| — | `workspace-creation/` | Import-or-create the Harness IACM workspace used as the Terraform state backend (when using IACM). |
+
+### Best practices
+
+- **Read the bootstrap README first**, then the deployment one. Each entrypoint
+  has its own README with the variables it needs.
+- **Never commit secrets or account IDs.** Copy `terraform.tfvars.example` →
+  `terraform.tfvars` (gitignored) and fill it per environment, or use the env
+  vars `HARNESS_ACCOUNT_ID`, `HARNESS_PLATFORM_API_KEY`, `HARNESS_ENDPOINT`.
+- **Providers:** copy `providers.tf.example` → `providers.tf` in each entrypoint.
+  `providers.tf` is gitignored — never commit it.
+- **Backend-agnostic:** no state backend is hardcoded. Use Harness IACM, AWS S3,
+  GCS, or local state — wire your choice into the entrypoint's `terraform.tf`.
+  The GCS snippets left in comments are **examples only**, not a requirement.
+- **Environment-generic defaults:** values like org/repo names and secret refs
+  default to examples — override them per environment, don't assume the defaults
+  fit your account.
+- **One org per change:** the deploy pipeline resolves a single org per push/PR;
+  keep each config change scoped to one organization.
+- **Config lives in `platform-configs/organizations/<Org Name>/…`** — the folder
+  name matches the org; projects are auto-discovered from `projects/*/config.yaml`.
+- **Always `tofu plan` and review before `apply`.** The pipelines gate apply
+  behind an approval stage — don't bypass it.
+
+---
+
 ## Overview
+
+> **⚠️ Legacy section.** The "Overview" and "Deployment Workflow" content below
+> references older entrypoint names (`harness-platform-setup`,
+> `harness-organization`, `harness-project`) that have been **consolidated** into
+> the `harness-platform-bootstrap` + `harness-platform-deployment` entrypoints
+> listed above. It is being revised — trust the **Start Here** section and the
+> per-entrypoint READMEs over the text below.
 
 This library provides three independent Terraform entrypoints that map to Harness's three resource scopes.
 
@@ -39,7 +89,6 @@ Each entrypoint manages:
 ### 1. Account baseline — `harness-platform-setup/`
 
 Run this once when setting up a new Harness account. Creates account-scoped roles, resource groups, user groups, OPA policies, and environments.
-
 
 
 `terraform.tfvars` minimum content:

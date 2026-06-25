@@ -132,6 +132,19 @@ locals {
   # tags) but are NOT used to set org_id / project_id on resources.
   ##############################################################################
 
-  resolved_org_id     = local.scope != "account" ? local.org_identifier : null
+  # For organization scope, take the id from the org RESOURCE's identifier so
+  # every org-scoped resource gains an implicit dependency on the org being
+  # created first. Without this, resources like harness_platform_secret_file
+  # race the org and fail with "Organization [<id>] not found" on first apply.
+  # The value is the config identifier (known at plan time), so referencing the
+  # resource adds only an ordering edge — no "known after apply" cascade, and
+  # the resolved value is identical to local.org_identifier (no diffs/replaces).
+  # For project scope the org pre-exists (looked up); ordering there is handled
+  # by the calling module's depends_on, so the derived string is used directly.
+  resolved_org_id = (
+    local.scope == "organization" ? one(harness_platform_organization.selected[*].identifier) :
+    local.scope == "project" ? local.org_identifier :
+    null
+  )
   resolved_project_id = local.scope == "project" ? local.project_identifier : null
 }

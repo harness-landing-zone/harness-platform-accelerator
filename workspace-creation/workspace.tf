@@ -13,8 +13,8 @@
 ##############################################################################
 
 locals {
-  ws_org_id     = "harness_platform_accelerator"
-  ws_project_id = "platform_management"
+  ws_org_id     = var.workspace_org_id
+  ws_project_id = var.workspace_project_id
 
   project_identifier = (
     var.project_id != null ? var.project_id :
@@ -147,7 +147,7 @@ module "hpa_workspace" {
   environment_variables = [
     {
       key        = "HARNESS_PLATFORM_API_KEY"
-      value      = "hpa_harness_bootstrap_api_key"
+      value      = var.workspace_api_key_secret_ref
       value_type = "secret"
     },
     {

@@ -1,3 +1,19 @@
+locals {
+  # GitHub App API auth reuses the same App supplied via http credentials —
+  # git_connector_api_auth only carries the github_app_api toggle (+ optional
+  # token_ref), so the App credentials are read from git_connector_http_credentials.
+  api_github_app         = try(var.git_connector_http_credentials.github_app, null)
+  api_github_app_enabled = try(var.git_connector_api_auth.github_app_api, false) && local.api_github_app != null
+
+  # Emit api_authentication only when it will carry usable auth: a token_ref, or
+  # a resolvable GitHub App. This avoids dereferencing a null credentials object
+  # AND avoids producing an empty (Harness-invalid) api_authentication block when
+  # github_app_api is requested without any credentials.
+  api_auth_usable = var.git_connector_api_auth != null && (
+    try(var.git_connector_api_auth.token_ref, null) != null || local.api_github_app_enabled
+  )
+}
+
 resource "harness_platform_connector_github" "github_connector" {
   count       = lower(var.connector_type) == "github" ? 1 : 0
   project_id  = try(var.project_id, null)
@@ -43,16 +59,17 @@ resource "harness_platform_connector_github" "github_connector" {
 
   # API Authentication for Git Experience
   dynamic "api_authentication" {
-    for_each = var.git_connector_api_auth != null ? [var.git_connector_api_auth] : []
+    for_each = local.api_auth_usable ? [var.git_connector_api_auth] : []
     content {
       token_ref = try(api_authentication.value.token_ref, null)
 
       dynamic "github_app" {
-        # Only inject if github_app_api is true AND we have credentials available
-        for_each = try(api_authentication.value.github_app_api, false) ? [var.git_connector_http_credentials.github_app] : []
+        # Reuse the http GitHub App; inject only when github_app_api is enabled
+        # AND the App credentials actually resolved (null-safe — see locals).
+        for_each = local.api_github_app_enabled ? [local.api_github_app] : []
         content {
-          application_id  = github_app.value.application_id
-          installation_id = github_app.value.installation_id
+          application_id  = try(github_app.value.application_id, null)
+          installation_id = try(github_app.value.installation_id, null)
           private_key_ref = github_app.value.private_key_ref
         }
       }
