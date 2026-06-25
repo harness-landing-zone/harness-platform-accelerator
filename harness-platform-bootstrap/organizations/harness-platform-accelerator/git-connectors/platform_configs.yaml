@@ -1,0 +1,24 @@
+name: Platform Configs
+identifier: platform_configs
+type: Github
+description: GitHub App connector for the hsf-platform-bootstrap configuration repository
+tags:
+  type: git
+  provider: github
+execute_on_delegate: false
+connector_url: https://github.com/harness-landing-zone
+connection_type: Account
+validation_repo: hpa-dev
+
+# GitHub App credentials (Way 1 — inline). These values are NOT secret:
+# application_id / installation_id are identifiers, and private_key_ref is a
+# *reference* to the PEM secret created under secrets/ (harness_lz_key), not the
+# key itself. Alternatively, omit this block and supply it via the
+# git_connector_credentials variable (Way 2) — see README "Git Connector Credentials".
+http_credentials:
+  github_app:
+    application_id: "2780955"            # example GitHub App ID
+    installation_id: "107783082"         # example installation ID
+    private_key_ref: org.harness_lz_key # ref to secrets/github_app_key.yaml (org-scoped)
+api_auth:
+  github_app_api: true

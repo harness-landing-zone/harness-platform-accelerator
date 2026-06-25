@@ -1,0 +1,7 @@
+name: Tofu Deploy IACM
+identifier: tofu_deploy_iacm
+description: Validates, scans, and deploys Terraform code for the Harness Landing Zone template library
+git_connector_ref: org.platform_configs
+git_repo_name: hpa-dev
+git_file_path: harness-platform-bootstrap/.harness/tofu_deploy_iacm.yaml
+git_branch: main

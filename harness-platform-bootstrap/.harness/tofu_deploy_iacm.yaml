@@ -2,7 +2,7 @@ pipeline:
   name: Tofu Deploy IACM
   identifier: tofu_deploy_iacm
   projectIdentifier: platform_management
-  orgIdentifier: hpa
+  orgIdentifier: harness_platform_accelerator
   description: Landing Zone deployment pipeline using Harness IACM.
   tags:
     engine: iacm
