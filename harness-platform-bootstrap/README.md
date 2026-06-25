@@ -90,7 +90,7 @@ Minimum required inputs:
 
 - `harness_platform_account` — your Harness account ID (supply per environment via `terraform.tfvars` or `HARNESS_ACCOUNT_ID`)
 - `organization_name` — the org **config-folder name** under `organizations/`
-  (defaults to `hpa`). This selects which config tree
+  (defaults to `harness-platform-accelerator`). This selects which config tree
   to deploy; the org display name and identifier come from that folder's
   `config.yaml`, falling back to this value only when `config.yaml` omits them.
 
@@ -168,7 +168,7 @@ This entrypoint reads config from its own local tree:
 harness-platform-bootstrap/
 ├── .harness/                           # pipeline definitions, imported into Harness
 └── organizations/
-    └── hpa/                            # folder name == organization_name
+    └── harness-platform-accelerator/   # folder name == organization_name
         ├── config.yaml                 # org name + identifier
         ├── git-connectors/
         ├── secrets/

@@ -1,5 +1,5 @@
-name: HPA
-identifier: "hpa"
+name: Harness Platform Accelerator
+identifier: "harness_platform_accelerator"
 description: Harness Accelerator Organization — hosts the Landing Zone deployment pipeline and platform tooling
 default_org_template: "bootstrap_default_config"
 default_project_template: "bootstrap_default_project"

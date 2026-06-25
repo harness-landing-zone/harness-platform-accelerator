@@ -18,7 +18,7 @@ variable "tags" {
 variable "organization_name" {
   type        = string
   description = "[Required] Organization name — must match the config-folder name under organizations/. Selects which org config tree to deploy; the org display name and identifier come from that folder's config.yaml (this value is the fallback when config.yaml omits them)."
-  default     = "hpa"
+  default     = "harness-platform-accelerator"
 }
 
 # GCP/GCS settings are consumed only by the deploy pipeline (for `tofu init

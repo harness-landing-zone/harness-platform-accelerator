@@ -2,7 +2,7 @@
 # Scoped at account level so it can manage orgs and projects across the platform.
 
 locals {
-  # Identifier-safe slug for the org that owns this deployer (e.g. "hpa").
+  # Identifier-safe slug for the org that owns this deployer.
   deployer_org = lower(replace(trimspace(var.organization_name), "/[^a-zA-Z0-9]+/", "_"))
 
   # Logical base shared by the service account and its credentials.

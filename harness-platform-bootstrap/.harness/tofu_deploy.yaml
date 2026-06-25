@@ -151,12 +151,7 @@ pipeline:
                       set -e
                       cd /harness/harness-platform-deployment
 
-                      # Use resolved org if available, otherwise fall back to pipeline variable
-                      if [ -n "$RESOLVED_ORG" ] && [ "$RESOLVED_ORG" != "null" ]; then
-                        ORG_NAME="$RESOLVED_ORG"
-                      else
-                        ORG_NAME="<+pipeline.variables.organization_name>"
-                      fi
+                      ORG_NAME="<+pipeline.variables.organization_name>"
 
                       ORG_STATE_KEY=$(printf '%s' "$ORG_NAME" | tr ' -' '_')
                       PROJECT_STATE_KEY=$(printf '%s' "<+pipeline.variables.project_name>" | tr ' -' '_')
@@ -182,7 +177,6 @@ pipeline:
                       TF_VAR_organization_name: <+pipeline.variables.organization_name>
                       TF_VAR_project_name: <+pipeline.variables.project_name>
                       TF_VAR_scope_level: <+pipeline.variables.scope_level>
-                      RESOLVED_ORG: <+steps.resolve_org_plan.output.outputVariables.RESOLVED_ORG_NAME>
                     outputVariables:
                       - name: STATE_PREFIX
                       - name: EFFECTIVE_ORG_NAME
@@ -219,7 +213,7 @@ pipeline:
                         tofu plan -out=tfplan
                       fi
                     envVariables:
-                      HARNESS_PLATFORM_API_KEY: <+secrets.getValue("hpa_platform_deployer_token")>
+                      HARNESS_PLATFORM_API_KEY: <+secrets.getValue("harness_platform_accelerator_platform_deployer_token")>
                       HARNESS_ACCOUNT_ID: <+account.identifier>
                       HARNESS_ENDPOINT: <+pipeline.variables.hanrness_platform_endpoint>
                       GOOGLE_OAUTH_ACCESS_TOKEN: <+steps.gcp_oidc_token_plan.output.outputVariables.GCLOUD_ACCESS_TOKEN>
@@ -503,7 +497,7 @@ pipeline:
                       # Apply the exact plan that was reviewed
                       tofu apply -auto-approve tfplan
                     envVariables:
-                      HARNESS_PLATFORM_API_KEY: <+secrets.getValue("hpa_platform_deployer_token")>
+                      HARNESS_PLATFORM_API_KEY: <+secrets.getValue("harness_platform_accelerator_platform_deployer_token")>
                       HARNESS_ENDPOINT: <+pipeline.variables.hanrness_platform_endpoint>
                       HARNESS_ACCOUNT_ID: <+account.identifier>
                       GOOGLE_OAUTH_ACCESS_TOKEN: <+steps.gcp_oidc_token_apply.output.outputVariables.GCLOUD_ACCESS_TOKEN>

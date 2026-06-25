@@ -63,7 +63,7 @@ pipeline:
       type: String
       description: The Secret Key created from the service account to be used in the workspace pipeline
       required: false
-      value: <+input>.default(hpa_platform_deployer_token)
+      value: <+input>.default(harness_platform_accelerator_platform_deployer_token)
     - name: workspace_repository
       type: String
       description: Repo the workspace will clone. Defaults to this pipeline's codebase repo.

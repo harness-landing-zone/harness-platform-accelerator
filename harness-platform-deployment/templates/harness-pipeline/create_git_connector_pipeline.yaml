@@ -192,7 +192,7 @@ pipeline:
 
                       HTTP_CODE=$(curl -s -o /tmp/create_secret_response.json -w "%{http_code}" \
                         -H "x-api-key: ${API_KEY}" \
-                        "https://seb.harness.io/gateway/ng/api/v2/secrets/files?accountIdentifier=${ACCOUNT_ID}&orgIdentifier=${ORG_ID}&projectIdentifier=${PROJECT_ID}" \
+                        "https://app.harness.io/gateway/ng/api/v2/secrets/files?accountIdentifier=${ACCOUNT_ID}&orgIdentifier=${ORG_ID}&projectIdentifier=${PROJECT_ID}" \
                         -F "spec=@/tmp/secret_spec.json;type=application/json" \
                         -F "file=@/tmp/converted-github-app.pem")
 
@@ -212,7 +212,7 @@ pipeline:
                       CONNECTOR_ID: <+pipeline.variables.connector_file_name>
                       ACCOUNT_ID: <+account.identifier>
                       PEM_CONTENT: <+pipeline.variables.github_private_key>
-                      API_KEY: <+secrets.getValue("secret ref")>
+                      API_KEY: <+secrets.getValue("harness_platform_accelerator_platform_deployer_token")>
                   timeout: 5m
                   failureStrategies:
                     - onFailure:
