@@ -12,13 +12,29 @@ locals {
   ##############################################################################
   # Project discovery (org bootstrap only)
   # Finds every projects/<key>/config.yaml under the org config directory and
-  # reads each config to get the display name.
+  # reads each config to get the display name ignore any case sensitive differences.
   ##############################################################################
+
+  org_dir_names = (
+    var.scope_level == "organization" && var.organization_name != null
+    ? toset([
+      for f in try(fileset("${local.configs_root}/organizations", "**"), toset([])) :
+      split("/", f)[0]
+    ])
+    : toset([])
+  )
+
+  resolved_org_name = try(
+    one([for d in local.org_dir_names : d if lower(d) == lower(var.organization_name)]),
+    var.organization_name
+  )
+
+  org_projects_dir = "${local.configs_root}/organizations/${local.resolved_org_name}/projects"
 
   org_project_files = (
     var.scope_level == "organization" && var.organization_name != null
     ? try(
-      fileset("${local.configs_root}/organizations/${var.organization_name}/projects", "*/config.yaml"),
+      fileset(local.org_projects_dir, "*/config.yaml"),
       toset([])
     )
     : toset([])
@@ -27,7 +43,7 @@ locals {
   project_configs = {
     for f in local.org_project_files :
     dirname(f) => try(
-      yamldecode(file("${local.configs_root}/organizations/${var.organization_name}/projects/${dirname(f)}/config.yaml")),
+      yamldecode(file("${local.org_projects_dir}/${dirname(f)}/config.yaml")),
       {}
     )
   }

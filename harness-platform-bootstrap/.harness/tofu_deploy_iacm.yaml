@@ -2,16 +2,8 @@ pipeline:
   name: Tofu Deploy IACM
   identifier: tofu_deploy_iacm
   projectIdentifier: platform_management
-  orgIdentifier: harness_platform_accelerator
-  description: |
-    Landing Zone deployment pipeline using Harness IACM.
-    Two trigger paths:
-      IDP / Manual  → skip_workspace_setup=false (default)
-                      Stages 1-3 find/approve/create workspace, then Stage 4 provisions.
-      Workspace UI  → skip_workspace_setup=true
-                      Stages 1-3 skipped, Stage 4 runs directly using workspace variables.
-    Stage 4 gets its TF_VAR_* from the workspace's baked-in terraform_variables —
-    no pipeline env vars needed.  The workspace is the single source of truth.
+  orgIdentifier: hpa
+  description: Landing Zone deployment pipeline using Harness IACM.
   tags:
     engine: iacm
     managed_by: landing_zone
@@ -64,16 +56,25 @@ pipeline:
       value: <+input>.default(https://app.harness.io/gateway)
     - name: skip_workspace_setup
       type: String
-      description: "Set to true when triggered from an existing workspace — skips Stages 1-3"
+      description: Set to true when triggered from an existing workspace — skips Stages 1-3
       required: false
       value: <+input>.default(false).allowedValues(true,false)
+    - name: workspace_api_key_referance
+      type: String
+      description: The Secret Key created from the service account to be used in the workspace pipeline
+      required: false
+      value: <+input>.default(hpa_platform_deployer_token)
+    - name: workspace_repository
+      type: String
+      description: Repo the workspace will clone. Defaults to this pipeline's codebase repo.
+      required: false
+      value: <+input>.default(<+pipeline.properties.ci.codebase.repoName>)
+    - name: workspace_repository_branch
+      type: String
+      description: Repo the workspace will clone. Defaults to this pipeline's codebase repo.
+      required: false
+      value: <+input>.default(<+pipeline.properties.ci.codebase.build.spec.branch>)
   stages:
-    ##########################################################################
-    # Stage 1 — Find Workspace (CI)
-    #
-    # Skipped when triggered from workspace (skip_workspace_setup=true).
-    # Data source lookup.  Outputs WORKSPACE_ID and WORKSPACE_EXISTS.
-    ##########################################################################
     - stage:
         name: Find Workspace
         identifier: find_workspace
@@ -107,30 +108,34 @@ pipeline:
 
                       WORKSPACE_ID=$(tofu output -state=/tmp/ws.tfstate -raw workspace_identifier)
                       WORKSPACE_EXISTS=$(tofu output -state=/tmp/ws.tfstate -raw workspace_exists)
+                      WORKSPACE_IMPORT_ID=$(tofu output -state=/tmp/ws.tfstate -raw workspace_import_id)
 
                       echo "Workspace: ${WORKSPACE_ID}"
                       echo "Exists: ${WORKSPACE_EXISTS}"
 
                       export WORKSPACE_ID
                       export WORKSPACE_EXISTS
+                      export WORKSPACE_IMPORT_ID
                     envVariables:
-                      HARNESS_PLATFORM_API_KEY: <+secrets.getValue("hpa_harness_bootstrap_api_key")>
+                      HARNESS_PLATFORM_API_KEY: <+secrets.getValue(<+pipeline.variables.workspace_api_key_referance>)>
                       HARNESS_ACCOUNT_ID: <+account.identifier>
                       HARNESS_ENDPOINT: <+pipeline.variables.harness_platform_endpoint>
                       TF_VAR_harness_platform_account: <+account.identifier>
                       TF_VAR_harness_platform_url: <+pipeline.variables.harness_platform_endpoint>
                       TF_VAR_organization_name: <+pipeline.variables.organization_name>
-                      TF_VAR_organization_id: ""
-                      TF_VAR_organization_description: Harness Organization managed by Solutions Factory
                       TF_VAR_project_name: <+pipeline.variables.project_name>
-                      TF_VAR_project_id: ""
-                      TF_VAR_project_key: ""
-                      TF_VAR_project_description: Harness Project managed by Solutions Factory
                       TF_VAR_scope_level: <+pipeline.variables.scope_level>
                       TF_VAR_configs_relative_path: <+pipeline.variables.configs_relative_path>
+                      TF_VAR_workspace_org_id: <+org.identifier>
+                      TF_VAR_workspace_project_id: <+project.identifier>
+                      TF_VAR_workspace_repository: <+pipeline.variables.workspace_repository>
+                      TF_VAR_workspace_repository_branch: <+pipeline.variables.workspace_repository_branch>
+                      TF_VAR_workspace_api_key_secret_ref: <+pipeline.variables.workspace_api_key_referance>
+                      TF_VAR_platform_configs_repo_name: <+pipeline.variables.platform_configs_repo_name>
                     outputVariables:
                       - name: WORKSPACE_ID
                       - name: WORKSPACE_EXISTS
+                      - name: WORKSPACE_IMPORT_ID
                   timeout: 5m
                   failureStrategies:
                     - onFailure:
@@ -147,12 +152,6 @@ pipeline:
                 - AllErrors
               action:
                 type: Abort
-
-    ##########################################################################
-    # Stage 2 — Approve Workspace Creation (Approval)
-    #
-    # Only fires when workspace setup is active AND workspace is new.
-    ##########################################################################
     - stage:
         name: Approve Workspace Creation
         identifier: approve_workspace
@@ -188,13 +187,6 @@ pipeline:
         when:
           pipelineStatus: Success
           condition: <+pipeline.variables.skip_workspace_setup> != "true" && <+stages.find_workspace.spec.execution.steps.lookup_workspace.output.outputVariables.WORKSPACE_EXISTS> == "false"
-
-    ##########################################################################
-    # Stage 3 — Converge Workspace (CI)
-    #
-    # Skipped when triggered from workspace (skip_workspace_setup=true).
-    # Import (if exists) or create, then apply to reconcile config.
-    ##########################################################################
     - stage:
         name: Converge Workspace
         identifier: converge_workspace
@@ -228,34 +220,32 @@ pipeline:
                       # update variables/config instead of trying to create
                       # a duplicate (which would 409).
                       if [ "$WORKSPACE_EXISTS" = "true" ]; then
-                        echo "Importing existing workspace: ${WORKSPACE_ID}"
-                        IMPORT_ID="${WS_ORG}/${WS_PROJECT}/${WORKSPACE_ID}"
+                        echo "Importing existing workspace: ${WORKSPACE_IMPORT_ID}"
                         tofu import \
                           -state=/tmp/ws.tfstate \
                           module.hpa_workspace.harness_platform_workspace.workspace \
-                          "$IMPORT_ID" || true
+                          "$WORKSPACE_IMPORT_ID" || true
                       fi
 
                       tofu apply -auto-approve -state=/tmp/ws.tfstate
                     envVariables:
-                      HARNESS_PLATFORM_API_KEY: <+secrets.getValue("hpa_harness_bootstrap_api_key")>
+                      HARNESS_PLATFORM_API_KEY: <+secrets.getValue(<+pipeline.variables.workspace_api_key_referance>)>
                       HARNESS_ACCOUNT_ID: <+account.identifier>
                       HARNESS_ENDPOINT: <+pipeline.variables.harness_platform_endpoint>
                       TF_VAR_harness_platform_account: <+account.identifier>
                       TF_VAR_harness_platform_url: <+pipeline.variables.harness_platform_endpoint>
                       TF_VAR_organization_name: <+pipeline.variables.organization_name>
-                      TF_VAR_organization_id: ""
-                      TF_VAR_organization_description: Harness Organization managed by Solutions Factory
                       TF_VAR_project_name: <+pipeline.variables.project_name>
-                      TF_VAR_project_id: ""
-                      TF_VAR_project_key: ""
-                      TF_VAR_project_description: Harness Project managed by Solutions Factory
                       TF_VAR_scope_level: <+pipeline.variables.scope_level>
                       TF_VAR_configs_relative_path: <+pipeline.variables.configs_relative_path>
+                      TF_VAR_workspace_org_id: <+org.identifier>
+                      TF_VAR_workspace_project_id: <+project.identifier>
+                      TF_VAR_workspace_api_key_secret_ref: <+pipeline.variables.workspace_api_key_referance>
+                      TF_VAR_workspace_repository: <+pipeline.variables.workspace_repository>
+                      TF_VAR_workspace_repository_branch: <+pipeline.variables.workspace_repository_branch>
+                      TF_VAR_platform_configs_repo_name: <+pipeline.variables.platform_configs_repo_name>
                       WORKSPACE_EXISTS: <+stages.find_workspace.spec.execution.steps.lookup_workspace.output.outputVariables.WORKSPACE_EXISTS>
-                      WORKSPACE_ID: <+stages.find_workspace.spec.execution.steps.lookup_workspace.output.outputVariables.WORKSPACE_ID>
-                      WS_ORG: harness_platform_accelerator
-                      WS_PROJECT: platform_management
+                      WORKSPACE_IMPORT_ID: <+stages.find_workspace.spec.execution.steps.lookup_workspace.output.outputVariables.WORKSPACE_IMPORT_ID>
                   timeout: 10m
                   failureStrategies:
                     - onFailure:
@@ -272,14 +262,6 @@ pipeline:
                 - AllErrors
               action:
                 type: Abort
-
-    ##########################################################################
-    # Stage 4 — IACM Provision
-    #
-    # Always runs.  Workspace ID comes from:
-    #   IDP path    → Stage 1 output (find_workspace)
-    #   Workspace   → pipeline variable (workspace_id)
-    ##########################################################################
     - stage:
         name: Tofu Provision
         identifier: tofu_provision

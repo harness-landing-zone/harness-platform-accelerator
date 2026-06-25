@@ -4,7 +4,6 @@ terraform {
   #   -backend-config="bucket=harness-backend-mk" \
   #   -backend-config="prefix=harness/platform_accelerator"
   # The bootstrap_deploy pipeline uses the same bucket/prefix to maintain state.
-  backend "gcs" {}
 
   required_providers {
     harness = {

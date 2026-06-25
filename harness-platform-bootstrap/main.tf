@@ -19,7 +19,7 @@ module "projects" {
 
   harness_platform_account  = var.harness_platform_account
   harness_platform_url      = var.harness_platform_url
-  organization_id           = module.platform_management.organization_id
+  organization_id           = one(module.platform_management[*].organization_id)
   project_name              = each.value.name
   project_key               = each.value.folder
   tags                      = var.tags

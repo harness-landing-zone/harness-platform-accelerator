@@ -6,7 +6,7 @@ variable "harness_platform_url" {
 
 variable "harness_platform_account" {
   type        = string
-  description = "[Required] Harness Platform Account ID."
+  description = "[Required] Harness Platform Account ID. Supply per environment via terraform.tfvars (gitignored) or the HARNESS_ACCOUNT_ID env var — do not commit a real account ID."
 }
 
 variable "tags" {
@@ -17,33 +17,44 @@ variable "tags" {
 
 variable "organization_name" {
   type        = string
-  description = "[Required] New Organization Name"
-  default     = "Platform Management"
+  description = "[Required] Organization name — must match the config-folder name under organizations/. Selects which org config tree to deploy; the org display name and identifier come from that folder's config.yaml (this value is the fallback when config.yaml omits them)."
+  default     = "hpa"
 }
+
+# GCP/GCS settings are consumed only by the deploy pipeline (for `tofu init
+# -backend-config` and OIDC token exchange) — no resource in this module
+# references them. They default to empty so a local/stateless run requires
+# neither a GCS backend nor GCP credentials. The pipeline overrides them via
+# TF_VAR_* when the GCS backend is in use.
 
 variable "gcs_bucket" {
   type        = string
-  description = "[Required] GCS bucket name for tofu remote state storage."
+  description = "[Optional] GCS bucket name for tofu remote state storage. Only needed when using the GCS backend via the deploy pipeline."
+  default     = ""
 }
 
 variable "gcp_project" {
   type        = string
-  description = "[Required] GCP project ID used for OIDC token exchange and GCS backend."
+  description = "[Optional] GCP project ID used for OIDC token exchange and GCS backend."
+  default     = ""
 }
 
 variable "gcp_pool_id" {
   type        = string
-  description = "[Required] GCP Workload Identity Pool ID for OIDC authentication."
+  description = "[Optional] GCP Workload Identity Pool ID for OIDC authentication."
+  default     = ""
 }
 
 variable "gcp_provider_id" {
   type        = string
-  description = "[Required] GCP Workload Identity Provider ID for OIDC authentication."
+  description = "[Optional] GCP Workload Identity Provider ID for OIDC authentication."
+  default     = ""
 }
 
 variable "gcp_service_account_email" {
   type        = string
-  description = "[Required] GCP service account email for OIDC token exchange."
+  description = "[Optional] GCP service account email for OIDC token exchange."
+  default     = ""
 }
 
 variable "git_connector_credentials" {
@@ -66,10 +77,4 @@ variable "scope_level" {
     condition     = contains(["account", "organization", "project"], var.scope_level)
     error_message = "scope_level must be account, organization, or project."
   }
-}
-
-variable "prefix" {
-  type        = string
-  default     = ""
-  description = "Resource prefix to ensure uniqueness. Should be left blank when deploying a single instance of the module, but can be set to differentiate resources when deploying multiple instances (e.g. across environments)."
 }

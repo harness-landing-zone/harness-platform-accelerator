@@ -1,6 +1,5 @@
 terraform {
-  # backend "gcs" {}
-
+  # Here we can add Any other backend we might want to use if its not Harness IACM
   required_providers {
     harness = {
       source  = "harness/harness"
