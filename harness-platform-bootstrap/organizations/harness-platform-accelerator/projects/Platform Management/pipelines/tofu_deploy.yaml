@@ -1,6 +1,6 @@
 name: Tofu Deploy
 description: Validates, scans, and deploys Terraform code for the Harness Landing Zone template library
 git_connector_ref: org.platform_configs
-git_repo_name: hpa-dev
+git_repo_name: harness-platform-accelerator
 git_file_path: harness-platform-bootstrap/.harness/tofu_deploy.yaml
 git_branch: main

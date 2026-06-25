@@ -2,13 +2,13 @@ pipeline:
   name: Harness Accelerator Bootstrap
   identifier: bootstrap_deploy
   projectIdentifier: platform_management
-  orgIdentifier: harness_platform_accelerator
+  orgIdentifier: hpa
   tags: {}
   properties:
     ci:
       codebase:
         connectorRef: org.platform_configs
-        repoName: harness-platform-accelerator
+        repoName: hpa-dev
         build: <+input>
   variables:
     - name: tofu_action
@@ -152,12 +152,12 @@ pipeline:
                         tofu plan -out=tfplan
                       fi
                     envVariables:
-                      HARNESS_PLATFORM_API_KEY: <+secrets.getValue("harness_bootstrap_api_key")>
+                      HARNESS_PLATFORM_API_KEY: <+secrets.getValue("hpa_platform_deployer_token")>
                       HARNESS_ACCOUNT_ID: <+account.identifier>
                       HARNESS_ENDPOINT: <+pipeline.variables.hanrness_platform_endpoint>
                       GOOGLE_OAUTH_ACCESS_TOKEN: <+steps.gcp_oidc_token_plan.output.outputVariables.GCLOUD_ACCESS_TOKEN>
                       TF_VAR_harness_platform_account: <+account.identifier>
-                      TF_VAR_organization_name: harness_platform_accelerator
+                      TF_VAR_organization_path: harness_platform_accelerator
                       TF_VAR_gcs_bucket: <+pipeline.variables.gcs_bucket>
                       TF_VAR_gcp_project: <+pipeline.variables.gcp_project>
                       TF_VAR_gcp_pool_id: <+pipeline.variables.gcp_pool_id>
@@ -387,12 +387,12 @@ pipeline:
                       # Apply the exact plan that was reviewed
                       tofu apply -auto-approve tfplan
                     envVariables:
-                      HARNESS_PLATFORM_API_KEY: <+secrets.getValue("harness_bootstrap_api_key")>
+                      HARNESS_PLATFORM_API_KEY: <+secrets.getValue("hpa_platform_deployer_token")>
                       HARNESS_ENDPOINT: <+pipeline.variables.hanrness_platform_endpoint>
                       HARNESS_ACCOUNT_ID: <+account.identifier>
                       GOOGLE_OAUTH_ACCESS_TOKEN: <+steps.gcp_oidc_token_apply.output.outputVariables.GCLOUD_ACCESS_TOKEN>
                       TF_VAR_harness_platform_account: <+account.identifier>
-                      TF_VAR_organization_name: harness_platform_accelerator
+                      TF_VAR_organization_path: harness_platform_accelerator
                       TF_VAR_gcs_bucket: <+pipeline.variables.gcs_bucket>
                       TF_VAR_gcp_project: <+pipeline.variables.gcp_project>
                       TF_VAR_gcp_pool_id: <+pipeline.variables.gcp_pool_id>

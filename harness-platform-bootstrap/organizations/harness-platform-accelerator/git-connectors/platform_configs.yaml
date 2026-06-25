@@ -8,7 +8,7 @@ tags:
 execute_on_delegate: false
 connector_url: https://github.com/harness-landing-zone
 connection_type: Account
-validation_repo: hpa-dev
+validation_repo: harness-platform-accelerator
 
 # GitHub App credentials (Way 1 — inline). These values are NOT secret:
 # application_id / installation_id are identifiers, and private_key_ref is a
