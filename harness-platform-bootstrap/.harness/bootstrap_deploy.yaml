@@ -2,13 +2,13 @@ pipeline:
   name: Harness Accelerator Bootstrap
   identifier: bootstrap_deploy
   projectIdentifier: platform_management
-  orgIdentifier: hpa
+  orgIdentifier: harness_platform_accelerator
   tags: {}
   properties:
     ci:
       codebase:
         connectorRef: org.platform_configs
-        repoName: hpa-dev
+        repoName: harness-platform-accelerator
         build: <+input>
   variables:
     - name: tofu_action
