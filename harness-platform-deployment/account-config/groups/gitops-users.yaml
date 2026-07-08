@@ -1,0 +1,5 @@
+name: "GitOps Users"
+description: "Account-level user group for GitOps application developers. Created once at account scope and inherited into the GitOps tenant projects, where the project Developer role is bound to it."
+tags:
+  purpose: gitops-tenant-users
+  owner: platform-team

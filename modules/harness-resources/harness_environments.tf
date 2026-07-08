@@ -25,6 +25,9 @@ resource "harness_platform_environment" "environments" {
 }
 
 resource "harness_platform_overrides" "example" {
+  # env_id is a plain string — the edge to the environment must be explicit.
+  depends_on = [harness_platform_environment.environments]
+
   for_each = {
     for environment in local.environment_overrides : environment.identifier => environment
   }

@@ -146,5 +146,11 @@ locals {
     local.scope == "project" ? local.org_identifier :
     null
   )
-  resolved_project_id = local.scope == "project" ? local.project_identifier : null
+  # Same ordering trick as resolved_org_id: take the id from the project
+  # RESOURCE's identifier so every project-scoped resource gains an implicit
+  # dependency on the project being created first. Without this, environments
+  # and roles race the project create and fail with 404 on first apply. The
+  # value is identical to local.project_identifier and known at plan time, so
+  # this adds only an ordering edge — no "known after apply" cascade.
+  resolved_project_id = local.scope == "project" ? one(harness_platform_project.selected[*].identifier) : null
 }
