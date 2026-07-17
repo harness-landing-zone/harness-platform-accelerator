@@ -73,17 +73,11 @@ locals {
     }
   } : {}
 
-  # Project scope only: IACM workspaces, CD services, and pipelines.
+  # Project scope only: IACM workspaces and pipelines.
   project_categories = local.scope == "project" ? {
     workspaces = {
       global_dir = "${local.source_directory}/workspaces"
       org_dir    = "${local.config_directory}/workspaces"
-      patterns   = ["*.yaml"]
-      key_fn     = "path"
-    }
-    services = {
-      global_dir = "${local.source_directory}/services"
-      org_dir    = "${local.config_directory}/services"
       patterns   = ["*.yaml"]
       key_fn     = "path"
     }
@@ -95,7 +89,18 @@ locals {
     }
   } : {}
 
-  categories = merge(local.base_categories, local.org_categories, local.project_categories)
+  # Services can be defined at any scope level (account, org, or project).
+  # They are added separately to support all scope levels.
+  service_categories = {
+    services = {
+      global_dir = "${local.source_directory}/services"
+      org_dir    = "${local.config_directory}/services"
+      patterns   = ["*.yaml"]
+      key_fn     = "path"
+    }
+  }
+
+  categories = merge(local.base_categories, local.org_categories, local.project_categories, local.service_categories)
 
   ##############################################################################
   # Merge logic

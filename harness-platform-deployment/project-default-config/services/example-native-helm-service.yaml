@@ -1,0 +1,39 @@
+---
+name: "Example Native Helm Service"
+description: "Native Helm chart service with Helm repository"
+tags:
+  service_type: native_helm
+  team: backend
+
+yaml:
+  service:
+    name: Example Native Helm Service
+    identifier: example_native_helm_service
+    serviceDefinition:
+      type: NativeHelm
+      spec:
+        manifests:
+          - manifest:
+              identifier: helm_chart
+              type: HelmChart
+              spec:
+                store:
+                  type: Http
+                  spec:
+                    connectorRef: account.helm_connector
+                chartName: my-helm-chart
+                chartVersion: <+input>
+                helmVersion: V3
+                skipResourceVersioning: false
+        variables:
+          - name: release_name
+            type: String
+            description: "Helm release name"
+            value: my-app
+          - name: chart_values
+            type: String
+            description: "Override values"
+            value: |
+              replicaCount: 3
+              image:
+                tag: <+artifact.tag>
