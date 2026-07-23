@@ -1,7 +1,0 @@
-name: Infrastructure
-identifier: "infrastructure"
-# default_project_template: "templates-two"
-description: Project to Create Infrastructure in Cloud providers for Delegates
-tags:
-  purpose: Platform management
-  owner: platform-team

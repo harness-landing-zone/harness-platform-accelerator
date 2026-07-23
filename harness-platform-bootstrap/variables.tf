@@ -7,6 +7,7 @@ variable "harness_platform_url" {
 variable "harness_platform_account" {
   type        = string
   description = "[Required] Harness Platform Account ID."
+  default = "9iW-060ARf-7xLCnVrVJbQ"
 }
 
 variable "tags" {
@@ -19,31 +20,6 @@ variable "organization_name" {
   type        = string
   description = "[Required] New Organization Name"
   default     = "Platform Management"
-}
-
-variable "gcs_bucket" {
-  type        = string
-  description = "[Required] GCS bucket name for tofu remote state storage."
-}
-
-variable "gcp_project" {
-  type        = string
-  description = "[Required] GCP project ID used for OIDC token exchange and GCS backend."
-}
-
-variable "gcp_pool_id" {
-  type        = string
-  description = "[Required] GCP Workload Identity Pool ID for OIDC authentication."
-}
-
-variable "gcp_provider_id" {
-  type        = string
-  description = "[Required] GCP Workload Identity Provider ID for OIDC authentication."
-}
-
-variable "gcp_service_account_email" {
-  type        = string
-  description = "[Required] GCP service account email for OIDC token exchange."
 }
 
 variable "git_connector_credentials" {

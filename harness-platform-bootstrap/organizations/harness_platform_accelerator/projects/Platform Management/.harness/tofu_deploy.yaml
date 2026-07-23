@@ -16,31 +16,21 @@ pipeline:
       description: tofu action to execute
       required: true
       value: <+input>.allowedValues(plan,apply,destroy)
-    - name: gcs_bucket
+    - name: s3_bucket
       type: String
-      description: GCS bucket name for tofu remote state storage
+      description: S3 bucket name for tofu remote state storage
       required: true
       value: <+input>.default(harness-backend-mk)
-    - name: gcp_project
+    - name: aws_region
       type: String
-      description: GCP project ID used for OIDC token exchange and GCS backend
+      description: AWS region for the S3 state backend and STS
       required: true
-      value: <+input>.default(767882366375)
-    - name: gcp_pool_id
+      value: <+input>.default(us-east-1)
+    - name: aws_role_arn
       type: String
-      description: GCP Workload Identity Pool ID for OIDC authentication
+      description: IAM role ARN to assume via OIDC for S3 backend access
       required: true
-      value: <+input>.default(harness-oidc)
-    - name: gcp_provider_id
-      type: String
-      description: GCP Workload Identity Provider ID for OIDC authentication
-      required: true
-      value: <+input>.default(harness-oidc)
-    - name: gcp_service_account_email
-      type: String
-      description: GCP service account email for OIDC token exchange
-      required: true
-      value: <+input>.default(harness-oidc@harness-management.iam.gserviceaccount.com)
+      value: <+input>
     - name: organization_name
       type: String
       description: Organization name to manage. Used for org deployments and for existing-org lookup in project-only deployments.
@@ -70,7 +60,7 @@ pipeline:
     - stage:
         name: tofu Plan
         identifier: tofu_plan
-        description: Clone repos, resolve org, run tofu plan, upload plan to GCS
+        description: Clone repos, resolve org, run tofu plan, upload plan to S3
         type: CI
         spec:
           cloneCodebase: true
@@ -173,18 +163,15 @@ pipeline:
                           type: Abort
               - step:
                   type: Plugin
-                  name: GCP OIDC Token
-                  identifier: gcp_oidc_token_plan
+                  name: AWS OIDC Token
+                  identifier: aws_oidc_token_plan
                   spec:
                     connectorRef: account.harnessImage
-                    image: plugins/gcp-oidc
+                    image: plugins/aws-oidc
                     settings:
-                      project_id: <+pipeline.variables.gcp_project>
-                      pool_id: <+pipeline.variables.gcp_pool_id>
-                      provider_id: <+pipeline.variables.gcp_provider_id>
-                      service_account_email_id: <+pipeline.variables.gcp_service_account_email>
+                      role_arn: <+pipeline.variables.aws_role_arn>
+                      aws_region: <+pipeline.variables.aws_region>
                       duration: 3600
-                      create_application_credentials_file: false
                   timeout: 5m
                   failureStrategies:
                     - onFailure:
@@ -226,10 +213,13 @@ pipeline:
                       export EFFECTIVE_ORG_NAME="$ORG_NAME"
 
                       tofu init \
-                        -backend-config="bucket=<+pipeline.variables.gcs_bucket>" \
-                        -backend-config="prefix=${STATE_PREFIX}"
+                        -backend-config="bucket=<+pipeline.variables.s3_bucket>" \
+                        -backend-config="key=${STATE_PREFIX}/terraform.tfstate" \
+                        -backend-config="region=<+pipeline.variables.aws_region>"
                     envVariables:
-                      GOOGLE_OAUTH_ACCESS_TOKEN: <+steps.gcp_oidc_token_plan.output.outputVariables.GCLOUD_ACCESS_TOKEN>
+                      AWS_ACCESS_KEY_ID: <+steps.aws_oidc_token_plan.output.outputVariables.AWS_ACCESS_KEY_ID>
+                      AWS_SECRET_ACCESS_KEY: <+steps.aws_oidc_token_plan.output.outputVariables.AWS_SECRET_ACCESS_KEY>
+                      AWS_SESSION_TOKEN: <+steps.aws_oidc_token_plan.output.outputVariables.AWS_SESSION_TOKEN>
                       TF_VAR_harness_platform_account: <+account.identifier>
                       TF_VAR_organization_name: <+pipeline.variables.organization_name>
                       TF_VAR_project_name: <+pipeline.variables.project_name>
@@ -269,7 +259,9 @@ pipeline:
                     envVariables:
                       HARNESS_PLATFORM_API_KEY: <+secrets.getValue("harness_bootstrap_api_key")>
                       HARNESS_ACCOUNT_ID: <+account.identifier>
-                      GOOGLE_OAUTH_ACCESS_TOKEN: <+steps.gcp_oidc_token_plan.output.outputVariables.GCLOUD_ACCESS_TOKEN>
+                      AWS_ACCESS_KEY_ID: <+steps.aws_oidc_token_plan.output.outputVariables.AWS_ACCESS_KEY_ID>
+                      AWS_SECRET_ACCESS_KEY: <+steps.aws_oidc_token_plan.output.outputVariables.AWS_SECRET_ACCESS_KEY>
+                      AWS_SESSION_TOKEN: <+steps.aws_oidc_token_plan.output.outputVariables.AWS_SESSION_TOKEN>
                       TF_VAR_harness_platform_account: <+account.identifier>
                       TF_VAR_organization_name: <+steps.tofu_init_plan.output.outputVariables.EFFECTIVE_ORG_NAME>
                       TF_VAR_project_name: <+pipeline.variables.project_name>
@@ -283,11 +275,11 @@ pipeline:
                           type: Abort
               - step:
                   type: Run
-                  name: Upload Plan to GCS
+                  name: Upload Plan to S3
                   identifier: upload_plan
                   spec:
                     connectorRef: account.harnessImage
-                    image: google/cloud-sdk:slim
+                    image: amazon/aws-cli:latest
                     shell: Sh
                     command: |
                       set -e
@@ -298,36 +290,24 @@ pipeline:
                         exit 1
                       fi
 
-                      GCS_BUCKET="<+pipeline.variables.gcs_bucket>"
+                      S3_BUCKET="<+pipeline.variables.s3_bucket>"
                       STATE_PREFIX="$STATE_PREFIX"
                       EXECUTION_ID="<+pipeline.executionId>"
                       PLAN_OBJECT="${STATE_PREFIX}/plans/${EXECUTION_ID}.tfplan"
 
-                      echo "Uploading plan to gs://${GCS_BUCKET}/${PLAN_OBJECT}"
+                      echo "Uploading plan to s3://${S3_BUCKET}/${PLAN_OBJECT}"
 
-                      # Upload via GCS JSON API using OIDC Bearer token
-                      ENCODED_OBJECT=$(printf '%s' "$PLAN_OBJECT" | sed 's|/|%2F|g')
+                      aws s3 cp "$PLAN_FILE" "s3://${S3_BUCKET}/${PLAN_OBJECT}"
 
-                      HTTP_CODE=$(curl -sf -o /dev/null -w '%{http_code}' \
-                        -X POST \
-                        -H "Authorization: Bearer $GCLOUD_ACCESS_TOKEN" \
-                        -H "Content-Type: application/octet-stream" \
-                        --data-binary @"$PLAN_FILE" \
-                        "https://storage.googleapis.com/upload/storage/v1/b/${GCS_BUCKET}/o?uploadType=media&name=${PLAN_OBJECT}")
-
-                      if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-                        echo "Plan uploaded successfully (HTTP ${HTTP_CODE})"
-                      else
-                        echo "ERROR: Upload failed with HTTP ${HTTP_CODE}"
-                        exit 1
-                      fi
-
-                      export PLAN_GCS_PATH="gs://${GCS_BUCKET}/${PLAN_OBJECT}"
+                      export PLAN_S3_PATH="s3://${S3_BUCKET}/${PLAN_OBJECT}"
                     envVariables:
-                      GCLOUD_ACCESS_TOKEN: <+steps.gcp_oidc_token_plan.output.outputVariables.GCLOUD_ACCESS_TOKEN>
+                      AWS_ACCESS_KEY_ID: <+steps.aws_oidc_token_plan.output.outputVariables.AWS_ACCESS_KEY_ID>
+                      AWS_SECRET_ACCESS_KEY: <+steps.aws_oidc_token_plan.output.outputVariables.AWS_SECRET_ACCESS_KEY>
+                      AWS_SESSION_TOKEN: <+steps.aws_oidc_token_plan.output.outputVariables.AWS_SESSION_TOKEN>
+                      AWS_DEFAULT_REGION: <+pipeline.variables.aws_region>
                       STATE_PREFIX: <+steps.tofu_init_plan.output.outputVariables.STATE_PREFIX>
                     outputVariables:
-                      - name: PLAN_GCS_PATH
+                      - name: PLAN_S3_PATH
                   timeout: 10m
                   failureStrategies:
                     - onFailure:
@@ -362,7 +342,7 @@ pipeline:
                         Scope        : <+pipeline.variables.scope_level>
                         Organization : <+stages.tofu_plan.spec.execution.steps.tofu_init_plan.output.outputVariables.EFFECTIVE_ORG_NAME>
                         Project      : <+pipeline.variables.project_name>
-                        Plan artifact: <+stages.tofu_plan.spec.execution.steps.upload_plan.output.outputVariables.PLAN_GCS_PATH>
+                        Plan artifact: <+stages.tofu_plan.spec.execution.steps.upload_plan.output.outputVariables.PLAN_S3_PATH>
 
                       Review the plan output in Stage 1 (tofu Plan) and approve only
                       if the changes are expected and safe to apply.
@@ -381,7 +361,7 @@ pipeline:
     - stage:
         name: tofu Apply
         identifier: tofu_apply
-        description: Download reviewed plan from GCS and apply
+        description: Download reviewed plan from S3 and apply
         type: CI
         spec:
           cloneCodebase: true
@@ -420,18 +400,15 @@ pipeline:
                           type: Abort
               - step:
                   type: Plugin
-                  name: GCP OIDC Token
-                  identifier: gcp_oidc_token_apply
+                  name: AWS OIDC Token
+                  identifier: aws_oidc_token_apply
                   spec:
                     connectorRef: account.harnessImage
-                    image: plugins/gcp-oidc
+                    image: plugins/aws-oidc
                     settings:
-                      project_id: <+pipeline.variables.gcp_project>
-                      pool_id: <+pipeline.variables.gcp_pool_id>
-                      provider_id: <+pipeline.variables.gcp_provider_id>
-                      service_account_email_id: <+pipeline.variables.gcp_service_account_email>
+                      role_arn: <+pipeline.variables.aws_role_arn>
+                      aws_region: <+pipeline.variables.aws_region>
                       duration: 3600
-                      create_application_credentials_file: false
                   timeout: 5m
                   failureStrategies:
                     - onFailure:
@@ -467,10 +444,13 @@ pipeline:
                       export STATE_PREFIX
 
                       tofu init \
-                        -backend-config="bucket=<+pipeline.variables.gcs_bucket>" \
-                        -backend-config="prefix=${STATE_PREFIX}"
+                        -backend-config="bucket=<+pipeline.variables.s3_bucket>" \
+                        -backend-config="key=${STATE_PREFIX}/terraform.tfstate" \
+                        -backend-config="region=<+pipeline.variables.aws_region>"
                     envVariables:
-                      GOOGLE_OAUTH_ACCESS_TOKEN: <+steps.gcp_oidc_token_apply.output.outputVariables.GCLOUD_ACCESS_TOKEN>
+                      AWS_ACCESS_KEY_ID: <+steps.aws_oidc_token_apply.output.outputVariables.AWS_ACCESS_KEY_ID>
+                      AWS_SECRET_ACCESS_KEY: <+steps.aws_oidc_token_apply.output.outputVariables.AWS_SECRET_ACCESS_KEY>
+                      AWS_SESSION_TOKEN: <+steps.aws_oidc_token_apply.output.outputVariables.AWS_SESSION_TOKEN>
                       TF_VAR_harness_platform_account: <+account.identifier>
                       TF_VAR_organization_name: <+stages.tofu_plan.spec.execution.steps.tofu_init_plan.output.outputVariables.EFFECTIVE_ORG_NAME>
                       TF_VAR_project_name: <+pipeline.variables.project_name>
@@ -487,29 +467,24 @@ pipeline:
                           type: Abort
               - step:
                   type: Run
-                  name: Download Plan from GCS
+                  name: Download Plan from S3
                   identifier: download_plan
                   spec:
                     connectorRef: account.harnessImage
-                    image: google/cloud-sdk:slim
+                    image: amazon/aws-cli:latest
                     shell: Sh
                     command: |
                       set -e
 
-                      GCS_BUCKET="<+pipeline.variables.gcs_bucket>"
+                      S3_BUCKET="<+pipeline.variables.s3_bucket>"
                       STATE_PREFIX="$STATE_PREFIX"
                       EXECUTION_ID="<+pipeline.executionId>"
                       PLAN_OBJECT="${STATE_PREFIX}/plans/${EXECUTION_ID}.tfplan"
                       PLAN_FILE="/harness/harness-platform-deployment/tfplan"
 
-                      echo "Downloading plan from gs://${GCS_BUCKET}/${PLAN_OBJECT}"
+                      echo "Downloading plan from s3://${S3_BUCKET}/${PLAN_OBJECT}"
 
-                      ENCODED_OBJECT=$(printf '%s' "$PLAN_OBJECT" | sed 's|/|%2F|g')
-
-                      curl -sf \
-                        -H "Authorization: Bearer $GCLOUD_ACCESS_TOKEN" \
-                        -o "$PLAN_FILE" \
-                        "https://storage.googleapis.com/storage/v1/b/${GCS_BUCKET}/o/${ENCODED_OBJECT}?alt=media"
+                      aws s3 cp "s3://${S3_BUCKET}/${PLAN_OBJECT}" "$PLAN_FILE"
 
                       if [ ! -s "$PLAN_FILE" ]; then
                         echo "ERROR: Downloaded plan file is empty"
@@ -518,7 +493,10 @@ pipeline:
 
                       echo "Plan downloaded successfully ($(wc -c < "$PLAN_FILE") bytes)"
                     envVariables:
-                      GCLOUD_ACCESS_TOKEN: <+steps.gcp_oidc_token_apply.output.outputVariables.GCLOUD_ACCESS_TOKEN>
+                      AWS_ACCESS_KEY_ID: <+steps.aws_oidc_token_apply.output.outputVariables.AWS_ACCESS_KEY_ID>
+                      AWS_SECRET_ACCESS_KEY: <+steps.aws_oidc_token_apply.output.outputVariables.AWS_SECRET_ACCESS_KEY>
+                      AWS_SESSION_TOKEN: <+steps.aws_oidc_token_apply.output.outputVariables.AWS_SESSION_TOKEN>
+                      AWS_DEFAULT_REGION: <+pipeline.variables.aws_region>
                       STATE_PREFIX: <+steps.tofu_init_apply.output.outputVariables.STATE_PREFIX>
                   timeout: 10m
                   failureStrategies:
@@ -548,7 +526,9 @@ pipeline:
                     envVariables:
                       HARNESS_PLATFORM_API_KEY: <+secrets.getValue("harness_bootstrap_api_key")>
                       HARNESS_ACCOUNT_ID: <+account.identifier>
-                      GOOGLE_OAUTH_ACCESS_TOKEN: <+steps.gcp_oidc_token_apply.output.outputVariables.GCLOUD_ACCESS_TOKEN>
+                      AWS_ACCESS_KEY_ID: <+steps.aws_oidc_token_apply.output.outputVariables.AWS_ACCESS_KEY_ID>
+                      AWS_SECRET_ACCESS_KEY: <+steps.aws_oidc_token_apply.output.outputVariables.AWS_SECRET_ACCESS_KEY>
+                      AWS_SESSION_TOKEN: <+steps.aws_oidc_token_apply.output.outputVariables.AWS_SESSION_TOKEN>
                       TF_VAR_harness_platform_account: <+account.identifier>
                       TF_VAR_organization_name: <+stages.tofu_plan.spec.execution.steps.tofu_init_plan.output.outputVariables.EFFECTIVE_ORG_NAME>
                       TF_VAR_project_name: <+pipeline.variables.project_name>

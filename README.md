@@ -36,47 +36,157 @@ Each entrypoint manages:
 
 ## Deployment Workflow
 
-### 1. Account baseline — `harness-platform-setup/`
+There are **two entrypoints**, run in order. Both share the same engine
+(`modules/harness-resources`) but differ in purpose and config source:
 
-Run this once when setting up a new Harness account. Creates account-scoped roles, resource groups, user groups, OPA policies, and environments.
+| Entrypoint | Purpose | Reads config from |
+|---|---|---|
+| `harness-platform-bootstrap/` | **One-time.** Creates the platform org **and** the service account + API key + token the deployment pipeline runs as. | its own internal `organizations/` folder |
+| `harness-platform-deployment/` | **Ongoing.** Account baseline, then orgs and projects, one scope/org per run. | the shared top-level `platform-configs/` |
 
+> **State model — one state file per thing.** Bootstrap, account scope, and
+> every org each get their **own S3 `key`**. Never share a state key across
+> scopes/orgs — a second run against the same key will try to destroy the first
+> one's resources. Re-point the backend with `tofu init -reconfigure
+> -backend-config="key=..."` before each distinct run.
 
+### Provider auth (all runs)
 
-`terraform.tfvars` minimum content:
+The `harness/harness` provider reads these from the **environment** (they are not
+Terraform variables):
+
+```sh
+export HARNESS_PLATFORM_API_KEY="pat.xxxxx"          # account-admin key
+export HARNESS_ACCOUNT_ID="<harness-account-id>"
+# export HARNESS_ENDPOINT="https://app.harness.io/gateway"   # only if custom/self-hosted
+```
+
+AWS creds for the S3 backend come from your shell (`AWS_PROFILE`, static keys, or
+SSO) — anything the AWS SDK resolves. See [State Management](#state-management).
+
+---
+
+### Step 1 — Bootstrap the platform org (`harness-platform-bootstrap/`)
+
+Run **once**, locally, with your admin credentials. Creates the accelerator org,
+its `Platform Management` project, and the bootstrap service account/API key.
+
+```sh
+cd harness-platform-bootstrap
+tofu init \
+  -backend-config="bucket=harness-backend-anmol" \
+  -backend-config="key=harness/bootstrap.tfstate" \
+  -backend-config="region=us-east-1"
+
+export TF_VAR_harness_platform_account="$HARNESS_ACCOUNT_ID"
+export TF_VAR_organization_name="harness_platform_accelerator"   # == org FOLDER name, not display name
+
+tofu plan -out=tfplan && tofu apply tfplan
+```
+
+> `organization_name` **must equal the folder name** under
+> `harness-platform-bootstrap/organizations/` (e.g. `harness_platform_accelerator`).
+> The default is `Platform Management`, which matches no folder — leaving it
+> unset silently discovers zero projects and fails later on a missing project.
+
+Git-connector credentials (GitHub App) are injected via `git_connector_credentials`
+— set it in a gitignored `terraform.tfvars`. For a throwaway run, point
+`private_key_ref` at the org secret this run creates (`org.harness_lz_key`):
 
 ```hcl
-harness_platform_account = "abc123xyz"
-tags = {}
+# harness-platform-bootstrap/terraform.tfvars  (gitignored)
+git_connector_credentials = {
+  platform_configs = {
+    http_credentials = { github_app = {
+      application_id  = "123456"
+      installation_id = "12345678"
+      private_key_ref = "org.harness_lz_key"
+    } }
+    api_auth = { github_app_api = true }
+  }
+}
+```
+
+The `harness_lz_key` secret reads a PEM from `harness-platform-bootstrap/pem-folder/harness_lz_key.pem`.
+For a run-it-now key: `openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out pem-folder/harness_lz_key.pem`
+(the connector will create but won't truly authenticate to GitHub until real App creds are supplied).
+
+---
+
+### Step 2 — Account baseline (`harness-platform-deployment`, `scope_level = account`)
+
+Run **before any org/project**. Creates account-scoped roles, resource groups,
+user groups, OPA policies, and connectors from `harness-platform-deployment/account-config/`.
+Groups referenced by projects with `scope_level: account` are created here — skip
+this and those project runs fail with *"User Group … not found in the given scope"*.
+
+```sh
+cd harness-platform-deployment
+tofu init -reconfigure \
+  -backend-config="bucket=harness-backend-anmol" \
+  -backend-config="key=harness/account.tfstate" \
+  -backend-config="region=us-east-1"
+
+export TF_VAR_harness_platform_account="$HARNESS_ACCOUNT_ID"
+export TF_VAR_scope_level="account"
+unset TF_VAR_organization_name        # not used at account scope
+
+tofu plan -out=tfplan && tofu apply tfplan
 ```
 
 ---
 
-### 2. Organization + Projects — `harness-organization/`
+### Step 3 — Organization + Projects (`harness-platform-deployment`, `scope_level = organization`)
 
-Run this once per Harness organization. Creates the org, applies org-scoped resources, and automatically discovers and creates all projects under that org from `platform-configs/organizations/<org-name>/projects/`.
+Run **once per org**, each with its **own state key**. Creates the org, applies
+org-scoped resources, and auto-discovers every `projects/*/config.yaml` under it.
 
-`terraform.tfvars` minimum content:
+```sh
+cd harness-platform-deployment
+tofu init -reconfigure \
+  -backend-config="bucket=harness-backend-anmol" \
+  -backend-config="key=harness/orgs/example_org_one.tfstate" \   # unique per org
+  -backend-config="region=us-east-1"
 
-```hcl
-harness_platform_account = "abc123xyz"
-organization_name        = "My Org"   # Must match folder name in platform-configs/organizations/
+export TF_VAR_harness_platform_account="$HARNESS_ACCOUNT_ID"
+export TF_VAR_scope_level="organization"
+export TF_VAR_organization_name="Example Org One"    # == folder in platform-configs/organizations/
+
+tofu plan -out=tfplan && tofu apply tfplan
 ```
 
-> **Project discovery is automatic.** Any folder matching `platform-configs/organizations/<org-name>/projects/*/config.yaml` is instantiated as a Harness project. No variables list required.
+> **Project discovery is automatic** — any `platform-configs/organizations/<org>/projects/*/config.yaml`
+> is instantiated. No variable list needed. Repeat this step (new state key +
+> `organization_name`) for each additional org.
+
+### Step 3b — Standalone project (`scope_level = project`)
+
+Deploy a single project into an **existing** org (the org must already exist):
+
+```sh
+export TF_VAR_scope_level="project"
+export TF_VAR_organization_name="Example Org One"
+export TF_VAR_project_name="My Project"
+tofu plan -out=tfplan && tofu apply tfplan
+```
 
 ---
 
-### 3. Standalone project — `harness-project/`
+### Gotchas learned the hard way
 
-Use this entrypoint directly when creating a single project outside of org-level discovery.
-
-`terraform.tfvars` minimum content:
-
-```hcl
-harness_platform_account = "abc123xyz"
-organization_id          = "My_Org"
-project_name             = "My Project"
-```
+- **`organization_name` = the folder name, never the display name.** This is the
+  single most common failure — wrong value → zero discovery → confusing downstream
+  errors (missing project/secret).
+- **Exported `TF_VAR_*` persist for your whole shell.** A leftover
+  `TF_VAR_organization_name` from a previous step will silently override the next
+  run. `unset` it when switching scopes.
+- **Run scopes in order: account → org → project.** Projects reference account-
+  level groups; orgs must exist before their projects.
+- **"already present" on apply = state drift.** The resource exists in Harness but
+  not in *this* state key (usually a prior run under a different key). Adopt it with
+  `tofu import '<address>' <identifier>` rather than deleting.
+- **`tofu init -reconfigure`** is required when changing the `-backend-config` key
+  between runs, or Terraform keeps using the previously initialised state.
 
 ---
 
@@ -421,9 +531,8 @@ AWS only. Exactly one authentication mode must be provided; the module enforces 
 |---|---|
 | Account | `iacm-admin` role, account-wide admin groups, OPA governance |
 | Organization | Org-admin groups, shared resource groups, org-scoped connectors |
-| Project | Developer/release-manager groups, pipeline-scoped environments, IACM workspace permissions |
+| Project | Developer/release-manager groups, pipeline-scoped environments |
 
-- `iacm_workspace_*` permissions are **project-scoped only** (not valid at account or org scope).
 - Environment access is granted through **Resource Groups** (filter by env type), not role permissions directly.
 - Harness built-in identifiers (e.g. `_organization_admin`, `_all_resources_including_child_scopes`) are prefixed with `_` and referenced directly in `role_bindings`.
 
@@ -431,11 +540,41 @@ AWS only. Exactly one authentication mode must be provided; the module enforces 
 
 ## State Management
 
-This repo uses **local state only**. Each entrypoint maintains its own `terraform.tfstate` file within its directory.
+State is stored in an **AWS S3 backend**. Bucket/key/region are supplied at `init`
+time via `-backend-config`, so the same code runs locally and in the pipeline
+against the same state object.
 
-- Do not configure a remote backend unless you intend to migrate.
-- Run one entrypoint at a time — they are independent.
-- Commit `terraform.tfstate` files only if your team has agreed on a shared local-state workflow; otherwise keep them local and gitignored.
+- `harness-platform-bootstrap/terraform.tf` — backend is **active** (`backend "s3" {}`).
+- `harness-platform-deployment/terraform.tf` — backend is **commented out**
+  (`# backend "s3" {}`); uncomment it to use S3 (otherwise deployment uses local state).
+
+### One state key per run
+
+Bootstrap, the account baseline, and **each org** get their own S3 `key`. Sharing a
+key across scopes/orgs causes the second run to plan a destroy of the first's
+resources. Switch keys with `-reconfigure`:
+
+| Run | Suggested key |
+|---|---|
+| Bootstrap | `harness/bootstrap.tfstate` |
+| Account baseline | `harness/account.tfstate` |
+| Org `Example Org One` | `harness/orgs/example_org_one.tfstate` |
+| Org `Example Org Two` | `harness/orgs/example_org_two.tfstate` |
+
+### Prerequisites & credentials
+
+- **The S3 bucket must exist beforehand** — Terraform does not create it. Create once:
+  ```sh
+  aws s3api create-bucket --bucket harness-backend-anmol --region us-east-1
+  aws s3api put-bucket-versioning --bucket harness-backend-anmol \
+    --versioning-configuration Status=Enabled
+  # non-us-east-1: add --create-bucket-configuration LocationConstraint=<region>
+  ```
+- Export AWS credentials into your shell — any method the AWS SDK resolves
+  (`AWS_PROFILE`, static keys, or SSO). Your identity needs
+  `s3:GetObject/PutObject/ListBucket` (+ `DeleteObject`) on the bucket.
+- **Backend `region` must match the bucket's real region**, or `init` fails with a
+  `301 PermanentRedirect`. Check with `aws s3api get-bucket-location --bucket <name>`.
 
 ---
 

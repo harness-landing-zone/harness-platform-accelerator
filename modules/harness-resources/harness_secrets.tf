@@ -16,6 +16,7 @@ locals {
 }
 
 resource "harness_platform_secret_text" "org_secrets" {
+  depends_on = [harness_platform_organization.selected]
   for_each = local.scope == "organization" ? {
     for k, s in local.secrets_text :
     coalesce(try(s.cnf.identifier, null), s.identifier) => s
@@ -34,6 +35,7 @@ resource "harness_platform_secret_text" "org_secrets" {
 }
 
 resource "harness_platform_secret_file" "org_secrets" {
+  depends_on = [harness_platform_organization.selected]
   for_each = local.scope == "organization" ? {
     for k, s in local.secrets_file :
     coalesce(try(s.cnf.identifier, null), s.identifier) => s

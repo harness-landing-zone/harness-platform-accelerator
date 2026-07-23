@@ -73,14 +73,8 @@ locals {
     }
   } : {}
 
-  # Project scope only: IACM workspaces, CD services, and pipelines.
+  # Project scope only: CD services and pipelines.
   project_categories = local.scope == "project" ? {
-    workspaces = {
-      global_dir = "${local.source_directory}/workspaces"
-      org_dir    = "${local.config_directory}/workspaces"
-      patterns   = ["*.yaml"]
-      key_fn     = "path"
-    }
     services = {
       global_dir = "${local.source_directory}/services"
       org_dir    = "${local.config_directory}/services"

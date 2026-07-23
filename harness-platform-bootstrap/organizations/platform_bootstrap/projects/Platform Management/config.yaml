@@ -1,7 +1,0 @@
-name: Platform Management
-identifier: "platform_management"
-# default_project_template: "templates-two"
-description: Platform Management project — hosts the Terraform Deploy pipeline for the Harness Landing Zone template library
-tags:
-  purpose: Platform management
-  owner: platform-team
