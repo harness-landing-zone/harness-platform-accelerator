@@ -1,12 +1,14 @@
-# Cloud Provider Connectors Module (AWS)
+# Cloud Provider Connectors Module (AWS / GCP / Kubernetes)
 
-Reusable Harness AWS connector module built on `harness_platform_connector_aws`.
+Reusable Harness connector module built on `harness_platform_connector_aws`, `harness_platform_connector_gcp`, and `harness_platform_connector_kubernetes`. The resource created is selected by `connector_type` (`aws`, `gcp`, or `kubernetes`).
 
 This module is written for the `harness/harness` provider and supports multiple AWS auth modes, including AWS OIDC (preferred for this repo wiring).
 
 ## What It Creates
 
-- `harness_platform_connector_aws`
+- `harness_platform_connector_aws` (`connector_type = "aws"`)
+- `harness_platform_connector_gcp` (`connector_type = "gcp"`)
+- `harness_platform_connector_kubernetes` (`connector_type = "kubernetes"`)
 
 Scope is controlled by optional inputs:
 
@@ -76,6 +78,37 @@ Notes:
 
 - Connector identifier is derived from the filename in repo wiring (consistent with other connector patterns).
 - Do not store AWS access keys in config; use OIDC (or Harness secret refs if using manual auth).
+
+## Kubernetes
+
+Set `connector_type = "kubernetes"`. Exactly one auth mode must be set (enforced by a lifecycle precondition):
+
+- `k8s_connector_inherit_from_delegate` (in-cluster delegate)
+- `k8s_connector_username_password`
+- `k8s_connector_service_account`
+- `k8s_connector_client_key_cert`
+- `k8s_connector_openid_connect`
+
+Top-level `delegate_selectors` applies to all modes. Repo wiring keys the connector `type: kubernetes` and derives the identifier from the filename, same as the AWS/GCP paths.
+
+```yaml
+type: kubernetes
+name: "Prod Cluster"
+description: "Harness Kubernetes connector"
+delegate_selectors:
+  - "k8s-delegate"
+
+# In-cluster delegate (no master_url / secrets needed)
+inherit_from_delegate:
+  delegate_selectors:
+    - "k8s-delegate"
+
+# Or, out-of-cluster via service account token (use Harness secret refs)
+# service_account:
+#   master_url: "https://kubernetes.example.com"
+#   service_account_token_ref: "account.k8s_sa_token"
+#   ca_cert_ref: "account.k8s_ca_cert"
+```
 
 ## Outputs
 

@@ -1,12 +1,18 @@
 variable "connector_type" {
-  description = "Cloud provider type for the connector. Supported values: aws, gcp."
+  description = "Cloud provider type for the connector. Supported values: aws, gcp, kubernetes."
   type        = string
   default     = "aws"
 
   validation {
-    condition     = contains(["aws", "gcp"], var.connector_type)
-    error_message = "connector_type must be one of: aws, gcp."
+    condition     = contains(["aws", "gcp", "kubernetes"], var.connector_type)
+    error_message = "connector_type must be one of: aws, gcp, kubernetes."
   }
+}
+
+variable "delegate_selectors" {
+  description = "Delegate selectors for the connector (used by kubernetes)."
+  type        = set(string)
+  default     = []
 }
 
 variable "connector_name" {
@@ -171,6 +177,65 @@ variable "gcp_connector_inherit_from_delegate" {
   description = "Authentication inherited from the Harness delegate running on GCP."
   type = object({
     delegate_selectors = set(string)
+  })
+  default = null
+}
+
+# ── Kubernetes Authentication ─────────────────────────────────────────────────
+
+variable "k8s_connector_inherit_from_delegate" {
+  description = "Kubernetes auth inherited from a Harness delegate running in-cluster."
+  type = object({
+    delegate_selectors = set(string)
+  })
+  default = null
+}
+
+variable "k8s_connector_username_password" {
+  description = "Kubernetes auth using username/password against the API server."
+  type = object({
+    master_url   = string
+    password_ref = string
+    username     = optional(string)
+    username_ref = optional(string)
+  })
+  default = null
+}
+
+variable "k8s_connector_service_account" {
+  description = "Kubernetes auth using a service account token."
+  type = object({
+    master_url                = string
+    service_account_token_ref = string
+    ca_cert_ref               = optional(string)
+  })
+  default = null
+}
+
+variable "k8s_connector_client_key_cert" {
+  description = "Kubernetes auth using a client key and certificate."
+  type = object({
+    master_url                = string
+    client_cert_ref           = string
+    client_key_ref            = string
+    client_key_algorithm      = string
+    ca_cert_ref               = optional(string)
+    client_key_passphrase_ref = optional(string)
+  })
+  default = null
+}
+
+variable "k8s_connector_openid_connect" {
+  description = "Kubernetes auth using OpenID Connect."
+  type = object({
+    master_url    = string
+    issuer_url    = string
+    client_id_ref = string
+    password_ref  = string
+    username      = optional(string)
+    username_ref  = optional(string)
+    secret_ref    = optional(string)
+    scopes        = optional(list(string))
   })
   default = null
 }

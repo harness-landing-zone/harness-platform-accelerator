@@ -9,7 +9,10 @@ pipeline:
       codebase:
         connectorRef: org.platform_configs
         repoName: harness-platform-accelerator
-        build: main
+        build:
+          type: branch
+          spec:
+            branch: <+input>
   variables:
     - name: tofu_action
       type: String

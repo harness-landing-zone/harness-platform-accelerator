@@ -1,0 +1,7 @@
+description: "Example Project One in Harness Example Org One"
+name: "Three"
+identofier: noding
+default_project_template: templates
+tags:
+  purpose: Testing Project Yaml Creation
+  owner: platform-team

@@ -1,0 +1,37 @@
+type: kubernetes
+name: "Kubernetes Connector"
+description: "Account-scoped Harness Kubernetes connector"
+force_delete: false
+delegate_selectors:
+  - "k8s-delegate"
+tags:
+  owner: platform-team
+  purpose: deployment
+
+# In-cluster delegate authentication (recommended for a delegate running in the cluster)
+inherit_from_delegate:
+  delegate_selectors:
+    - "k8s-delegate"
+
+# Out-of-cluster alternatives (use Harness secret refs, never inline secrets):
+# service_account:
+#   master_url: "https://kubernetes.example.com"
+#   service_account_token_ref: "account.k8s_sa_token"
+#   ca_cert_ref: "account.k8s_ca_cert"
+#
+# username_password:
+#   master_url: "https://kubernetes.example.com"
+#   username: "admin"
+#   password_ref: "account.k8s_password"
+#
+# client_key_cert:
+#   master_url: "https://kubernetes.example.com"
+#   client_cert_ref: "account.k8s_client_cert"
+#   client_key_ref: "account.k8s_client_key"
+#   client_key_algorithm: "RSA"
+#
+# openid_connect:
+#   master_url: "https://kubernetes.example.com"
+#   issuer_url: "https://oidc.example.com"
+#   client_id_ref: "account.k8s_oidc_client_id"
+#   password_ref: "account.k8s_oidc_password"

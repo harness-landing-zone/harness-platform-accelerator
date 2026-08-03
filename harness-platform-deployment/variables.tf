@@ -7,6 +7,7 @@ variable "harness_platform_url" {
 variable "harness_platform_account" {
   type        = string
   description = "[Required] Harness Platform Account ID."
+  default = "9iW-060ARf-7xLCnVrVJbQ"
 }
 
 variable "tags" {

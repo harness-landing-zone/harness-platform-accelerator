@@ -182,3 +182,97 @@ resource "harness_platform_connector_gcp" "gcp" {
     }
   }
 }
+
+resource "harness_platform_connector_kubernetes" "kubernetes" {
+  count = var.connector_type == "kubernetes" ? 1 : 0
+
+  name = var.connector_name
+  identifier = (
+    var.connector_identifier != null && trimspace(var.connector_identifier) != ""
+    ? var.connector_identifier
+    : replace(replace(lower(var.connector_name), " ", "_"), "-", "_")
+  )
+  description = (
+    var.connector_description != null && trimspace(var.connector_description) != ""
+    ? var.connector_description
+    : null
+  )
+  tags = toset(try(var.connector_tags, []))
+
+  # Optional scoping (account-level if both are null)
+  org_id       = var.org_id != null && trimspace(var.org_id) != "" ? var.org_id : null
+  project_id   = var.project_id != null && trimspace(var.project_id) != "" ? var.project_id : null
+  force_delete = try(var.force_delete, null)
+
+  delegate_selectors = toset(try(var.delegate_selectors, []))
+
+  # Auth mode: inherit from delegate
+  dynamic "inherit_from_delegate" {
+    for_each = var.k8s_connector_inherit_from_delegate != null ? [var.k8s_connector_inherit_from_delegate] : []
+    content {
+      delegate_selectors = inherit_from_delegate.value.delegate_selectors
+    }
+  }
+
+  # Auth mode: username / password
+  dynamic "username_password" {
+    for_each = var.k8s_connector_username_password != null ? [var.k8s_connector_username_password] : []
+    content {
+      master_url   = username_password.value.master_url
+      password_ref = username_password.value.password_ref
+      username     = try(username_password.value.username, null)
+      username_ref = try(username_password.value.username_ref, null)
+    }
+  }
+
+  # Auth mode: service account token
+  dynamic "service_account" {
+    for_each = var.k8s_connector_service_account != null ? [var.k8s_connector_service_account] : []
+    content {
+      master_url                = service_account.value.master_url
+      service_account_token_ref = service_account.value.service_account_token_ref
+      ca_cert_ref               = try(service_account.value.ca_cert_ref, null)
+    }
+  }
+
+  # Auth mode: client key / cert
+  dynamic "client_key_cert" {
+    for_each = var.k8s_connector_client_key_cert != null ? [var.k8s_connector_client_key_cert] : []
+    content {
+      master_url                = client_key_cert.value.master_url
+      client_cert_ref           = client_key_cert.value.client_cert_ref
+      client_key_ref            = client_key_cert.value.client_key_ref
+      client_key_algorithm      = client_key_cert.value.client_key_algorithm
+      ca_cert_ref               = try(client_key_cert.value.ca_cert_ref, null)
+      client_key_passphrase_ref = try(client_key_cert.value.client_key_passphrase_ref, null)
+    }
+  }
+
+  # Auth mode: OpenID Connect
+  dynamic "openid_connect" {
+    for_each = var.k8s_connector_openid_connect != null ? [var.k8s_connector_openid_connect] : []
+    content {
+      master_url    = openid_connect.value.master_url
+      issuer_url    = openid_connect.value.issuer_url
+      client_id_ref = openid_connect.value.client_id_ref
+      password_ref  = openid_connect.value.password_ref
+      username      = try(openid_connect.value.username, null)
+      username_ref  = try(openid_connect.value.username_ref, null)
+      secret_ref    = try(openid_connect.value.secret_ref, null)
+      scopes        = try(openid_connect.value.scopes, null)
+    }
+  }
+
+  lifecycle {
+    precondition {
+      condition = (
+        (var.k8s_connector_inherit_from_delegate != null ? 1 : 0) +
+        (var.k8s_connector_username_password != null ? 1 : 0) +
+        (var.k8s_connector_service_account != null ? 1 : 0) +
+        (var.k8s_connector_client_key_cert != null ? 1 : 0) +
+        (var.k8s_connector_openid_connect != null ? 1 : 0)
+      ) == 1
+      error_message = "Exactly one Kubernetes auth mode must be enabled: inherit_from_delegate, username_password, service_account, client_key_cert, or openid_connect."
+    }
+  }
+}

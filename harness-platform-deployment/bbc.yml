@@ -1,0 +1,331 @@
+pipeline:
+  name: "BBC Golden Path "
+  identifier: BBC_Golden_Path
+  projectIdentifier: default
+  orgIdentifier: default
+  tags: {}
+  properties:
+    ci:
+      codebase:
+        connectorRef: <+input>
+        repoName: <+input>
+        build: <+input>
+  stages:
+    - stage:
+        name: Scan and Build
+        identifier: Scan_and_Build
+        description: ""
+        type: CI
+        spec:
+          cloneCodebase: true
+          caching:
+            enabled: true
+            override: false
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec: {}
+          execution:
+            steps:
+              - stepGroup:
+                  name: SCA
+                  identifier: SCA
+                  steps:
+                    - parallel:
+                        - step:
+                            type: GitHubAdvancedSecurity
+                            name: Secret Scanning
+                            identifier: Secret_Scanning
+                            spec:
+                              mode: extraction
+                              config: secret
+                              target:
+                                type: repository
+                                detection: auto
+                              advanced:
+                                log:
+                                  level: info
+                              privileged: true
+                              auth:
+                                access_token: <+input>
+                                domain: <+input>
+                                ssl: true
+                        - step:
+                            type: SscaOrchestration
+                            name: SBOM Repo
+                            identifier: SBOM_Repo
+                            spec:
+                              mode: generation
+                              tool:
+                                type: Syft
+                                spec:
+                                  format: spdx-json
+                              source:
+                                type: repository
+                                spec:
+                                  url: <+input>
+                                  path: <+input>
+                                  variant_type: branch
+                                  variant: <+input>
+                              sbom_drift:
+                                base: repository
+                                spec:
+                                  variant: <+input>
+                              resources:
+                                limits:
+                                  memory: 500Mi
+                                  cpu: "0.5"
+                    - step:
+                        type: GitHubAdvancedSecurity
+                        name: CodeQL
+                        identifier: CodeQL
+                        spec:
+                          mode: orchestration
+                          config: codeql
+                          target:
+                            type: repository
+                            detection: auto
+                          advanced:
+                            log:
+                              level: info
+                          privileged: true
+                          auth:
+                            access_token: <+input>
+                            domain: <+input>
+                            ssl: true
+              - stepGroup:
+                  name: Build Your App
+                  identifier: Build_Your_App
+                  steps:
+                    - step:
+                        type: Run
+                        name: Build APP
+                        identifier: Build_APP
+                        spec:
+                          shell: Sh
+                          command: echo "building APP"
+                    - parallel:
+                        - step:
+                            type: SscaOrchestration
+                            name: SBOM Artifact
+                            identifier: SBOM_Artifact
+                            spec:
+                              mode: ingestion
+                              ingestion:
+                                file: SBOM Artifact
+                              source:
+                                type: local
+                                spec:
+                                  workspace: <+input>
+                                  artifact_name: <+input>
+                                  version: <+input>
+                              resources:
+                                limits:
+                                  memory: 500Mi
+                                  cpu: "0.5"
+                        - step:
+                            type: SscaArtifactSigning
+                            name: Artifact Signing
+                            identifier: Artifact_Signing
+                            spec:
+                              source:
+                                type: local
+                                spec:
+                                  workspace: <+input>
+                                  artifact_name: <+input>
+                                  version: <+input>
+                                  type: manual
+                              signing:
+                                type: keyless
+                                spec:
+                                  oidcProvider: harness
+                              resources:
+                                limits:
+                                  memory: 500Mi
+                                  cpu: "0.5"
+                        - step:
+                            type: provenance
+                            name: SLSA Generation
+                            identifier: SLSA_Generation
+                            spec:
+                              source:
+                                type: local
+                                spec:
+                                  workspace: <+input>
+                                  type: auto
+                              attestation:
+                                type: keyless
+                                spec:
+                                  oidcProvider: harness
+                              resources:
+                                limits:
+                                  memory: 500Mi
+                                  cpu: "0.5"
+    - stage:
+        name: Deploy
+        identifier: Deploy
+        description: ""
+        type: Deployment
+        spec:
+          deploymentType: AwsLambda
+          service:
+            serviceRef: <+input>
+            serviceInputs: <+input>
+          environment:
+            environmentRef: <+input>
+            deployToAll: false
+            environmentInputs: <+input>
+            serviceOverrideInputs: <+input>
+            infrastructureDefinitions: <+input>
+          execution:
+            steps:
+              - stepGroup:
+                  name: "SSCA "
+                  identifier: SSCA
+                  steps:
+                    - step:
+                        type: SscaArtifactVerification
+                        name: Artifact Verification
+                        identifier: Artifact_Verification
+                        spec:
+                          source:
+                            type: har
+                            spec:
+                              registry: <+input>
+                              image: <+input>
+                          verifySign:
+                            type: keyless
+                            spec:
+                              oidcProvider: harness
+                          resources:
+                            limits:
+                              memory: 500Mi
+                              cpu: "0.5"
+                    - step:
+                        type: SlsaVerification
+                        name: SLSA Verification_1
+                        identifier: SLSAVerification_1
+                        spec:
+                          source:
+                            type: Local
+                            spec:
+                              workspace: <+input>
+                              type: auto
+                          verify_attestation:
+                            type: keyless
+                            spec:
+                              oidcProvider: harness
+                          resources:
+                            limits:
+                              memory: 500Mi
+                              cpu: "0.5"
+                  stepGroupInfra:
+                    type: KubernetesDirect
+                    spec:
+                      connectorRef: <+input>
+              - step:
+                  name: Lambda Canary Deploy
+                  identifier: canaryDeployAwsLambda
+                  type: AwsLambdaCanaryDeploy
+                  timeout: 10m
+                  spec: {}
+              - step:
+                  name: Lambda Traffic Shift
+                  identifier: trafficShift10
+                  type: AwsLambdaTrafficShift
+                  timeout: 10m
+                  spec:
+                    trafficPercentage: 10
+              - step:
+                  type: Verify
+                  name: AIVerifyV1_1
+                  identifier: AIVerifyV1_1
+                  spec:
+                    isMultiServicesOrEnvs: false
+                    type: Canary
+                    monitoredService:
+                      type: Default
+                      spec: {}
+                    spec:
+                      sensitivity: HIGH
+                      duration: 15m
+                  timeout: 2h
+                  failureStrategies:
+                    - onFailure:
+                        errors:
+                          - Verification
+                        action:
+                          type: ManualIntervention
+                          spec:
+                            timeout: 2h
+                            onTimeout:
+                              action:
+                                type: StageRollback
+                    - onFailure:
+                        errors:
+                          - Unknown
+                        action:
+                          type: ManualIntervention
+                          spec:
+                            timeout: 2h
+                            onTimeout:
+                              action:
+                                type: Ignore
+              - step:
+                  name: Lambda Traffic Shift
+                  identifier: trafficShift100
+                  type: AwsLambdaTrafficShift
+                  timeout: 10m
+                  spec:
+                    trafficPercentage: 100
+              - step:
+                  type: Verify
+                  name: AIVerifyV1_2
+                  identifier: AIVerifyV1_2
+                  spec:
+                    isMultiServicesOrEnvs: false
+                    type: Auto
+                    monitoredService:
+                      type: Default
+                      spec: {}
+                    spec:
+                      sensitivity: HIGH
+                      duration: 15m
+                  timeout: 2h
+                  failureStrategies:
+                    - onFailure:
+                        errors:
+                          - Verification
+                        action:
+                          type: ManualIntervention
+                          spec:
+                            timeout: 2h
+                            onTimeout:
+                              action:
+                                type: StageRollback
+                    - onFailure:
+                        errors:
+                          - Unknown
+                        action:
+                          type: ManualIntervention
+                          spec:
+                            timeout: 2h
+                            onTimeout:
+                              action:
+                                type: Ignore
+            rollbackSteps:
+              - step:
+                  name: Rollback Canary Deploy
+                  identifier: rollbackCanaryDeploy
+                  type: AwsLambdaCanaryRollback
+                  timeout: 10m
+                  spec: {}
+        tags: {}
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback

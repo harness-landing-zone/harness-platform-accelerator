@@ -1,0 +1,13 @@
+type: kubernetes
+name: "Kubernetes Connector"
+description: "Account-scoped Harness Kubernetes connector using an in-cluster delegate"
+force_delete: false
+delegate_selectors:
+  - "k8s-delegate"
+tags:
+  owner: platform-team
+  purpose: deployment
+
+inherit_from_delegate:
+  delegate_selectors:
+    - "k8s-delegate"

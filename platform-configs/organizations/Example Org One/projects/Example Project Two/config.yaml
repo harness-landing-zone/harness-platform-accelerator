@@ -1,0 +1,5 @@
+description: "Example Project Two in Harness Example Org Two"
+name: "Example Project Two"
+tags:
+  purpose: Testing Project Yaml Creation
+  owner: platform-team
