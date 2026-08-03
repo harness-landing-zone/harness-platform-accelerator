@@ -204,7 +204,8 @@ resource "harness_platform_connector_kubernetes" "kubernetes" {
   project_id   = var.project_id != null && trimspace(var.project_id) != "" ? var.project_id : null
   force_delete = try(var.force_delete, null)
 
-  delegate_selectors = toset(try(var.delegate_selectors, []))
+  # Conflicts with inherit_from_delegate (which carries its own selectors)
+  delegate_selectors = var.k8s_connector_inherit_from_delegate != null ? null : toset(try(var.delegate_selectors, []))
 
   # Auth mode: inherit from delegate
   dynamic "inherit_from_delegate" {
