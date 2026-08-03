@@ -8,4 +8,4 @@ tags:
 
 inherit_from_delegate:
   delegate_selectors:
-    - "k8s-delegate"
+    - "helm-delegate"
