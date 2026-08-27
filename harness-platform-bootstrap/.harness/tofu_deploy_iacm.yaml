@@ -268,7 +268,7 @@ pipeline:
         description: Init, plan, approve, and apply/destroy via IACM
         type: IACM
         spec:
-          workspace: <+input>.default(<+stages.find_workspace.spec.execution.steps.lookup_workspace.output.outputVariables.WORKSPACE_ID>)
+          workspace: <+stages.find_workspace.spec.execution.steps.lookup_workspace.output.outputVariables.WORKSPACE_ID>
           platform:
             os: Linux
             arch: Amd64
