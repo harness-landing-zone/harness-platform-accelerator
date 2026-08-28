@@ -1,5 +1,6 @@
 terraform {
-  # Here we can add Any other backend we might want to use if its not Harness IACM
+  # The shared deployment pipeline supplies bucket/prefix at init time.
+
   required_providers {
     harness = {
       source  = "harness/harness"

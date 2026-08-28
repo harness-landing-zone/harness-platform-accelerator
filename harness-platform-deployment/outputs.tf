@@ -25,3 +25,8 @@ output "platform_configs_repo_name" {
   description = "Name of the platform-configs repository"
   value       = var.platform_configs_repo_name
 }
+
+output "service_discovery_agents" {
+  description = "Service Discovery Agents managed by a standalone project deployment."
+  value       = try(module.project[0].service_discovery_agents, {})
+}

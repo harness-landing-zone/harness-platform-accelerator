@@ -1,0 +1,3 @@
+description: Account-level self-service Workflows available to the shared executor audience.
+resource_filters:
+  - type: IDP_WORKFLOW

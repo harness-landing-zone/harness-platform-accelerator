@@ -3,15 +3,17 @@
 # linked_sso_type: "SAML" # Required for SSO link
 # linked_sso_id: # Required
 # sso_group_id: # Should be the SSO Group ID to map
-Name: IACM Developers
-description: IACM Developers group allowed to Use Workspaces in the Inherited Org or Project they belong
+Name: Developers
+description: Developer teams allowed to request and own project landing zones.
 tags:
-  purpose: IACM Admins
+  purpose: developers
 role_bindings:
 - role: shared_resource_access
   resource_group: _all_account_level_resources
-
-
+- role: _idp_workflow_executor
+  resource_group: shared_idp_workflows
+- role: idp_workflow_requester_context
+  resource_group: developer_user_group_context
 
 
 

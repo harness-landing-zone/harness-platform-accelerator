@@ -1,0 +1,7 @@
+scope_level: account
+description: Existing account group allowed to execute shared account-level IDP Workflows.
+role_bindings:
+  - role: _idp_workflow_executor
+    resource_group: shared_idp_workflows
+  - role: idp_workflow_requester_context
+    resource_group: developer_user_group_context

@@ -93,6 +93,12 @@ locals {
       patterns   = ["*.yaml"]
       key_fn     = "path"
     }
+    service-discovery-agents = {
+      global_dir = "${local.source_directory}/service-discovery-agents"
+      org_dir    = "${local.config_directory}/service-discovery-agents"
+      patterns   = ["*.yaml"]
+      key_fn     = "path"
+    }
   } : {}
 
   categories = merge(local.base_categories, local.org_categories, local.project_categories)

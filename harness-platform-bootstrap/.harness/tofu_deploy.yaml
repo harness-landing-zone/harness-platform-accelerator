@@ -51,11 +51,21 @@ pipeline:
       description: Project name to deploy when scope_level is project.
       required: false
       value: <+input>
+    - name: project_key
+      type: String
+      description: Optional project folder key in the private config repo when it differs from project_name.
+      required: false
+      value: <+input>
     - name: scope_level
       type: String
       description: "Deployment scope: organization (org + all discovered projects), project (single project into existing org), account (platform team only — account-level resources)."
       required: false
       value: <+input>.default(organization).allowedValues(organization,project,account)
+    - name: kubernetes_approver_user_group
+      type: String
+      description: "For apply/destroy plans containing an SDA: scoped Harness user-group reference for Kubernetes-team approvers."
+      required: false
+      value: <+input>
     - name: platform_configs_repo_name
       type: String
       description: Platform configs repo to clone for org/project overrides (leave empty to use template defaults only)
@@ -176,6 +186,7 @@ pipeline:
                       TF_VAR_harness_platform_account: <+account.identifier>
                       TF_VAR_organization_name: <+pipeline.variables.organization_name>
                       TF_VAR_project_name: <+pipeline.variables.project_name>
+                      TF_VAR_project_key: <+pipeline.variables.project_key>
                       TF_VAR_scope_level: <+pipeline.variables.scope_level>
                     outputVariables:
                       - name: STATE_PREFIX
@@ -212,6 +223,17 @@ pipeline:
                       else
                         tofu plan -out=tfplan
                       fi
+
+                      if tofu show -json tfplan | grep -q '"type":"harness_service_discovery_agent"'; then
+                        HAS_SDA_RESOURCE=true
+                      else
+                        HAS_SDA_RESOURCE=false
+                      fi
+                      if [ "$HAS_SDA_RESOURCE" = "true" ] && [ "<+pipeline.variables.tofu_action>" != "plan" ] && { [ -z "<+pipeline.variables.kubernetes_approver_user_group>" ] || [ "<+pipeline.variables.kubernetes_approver_user_group>" = "null" ]; }; then
+                        echo "ERROR: an SDA plan requires kubernetes_approver_user_group before apply/destroy"
+                        exit 1
+                      fi
+                      export HAS_SDA_RESOURCE
                     envVariables:
                       HARNESS_PLATFORM_API_KEY: <+secrets.getValue("harness_platform_accelerator_platform_deployer_token")>
                       HARNESS_ACCOUNT_ID: <+account.identifier>
@@ -220,7 +242,10 @@ pipeline:
                       TF_VAR_harness_platform_account: <+account.identifier>
                       TF_VAR_organization_name: <+steps.tofu_init_plan.output.outputVariables.EFFECTIVE_ORG_NAME>
                       TF_VAR_project_name: <+pipeline.variables.project_name>
+                      TF_VAR_project_key: <+pipeline.variables.project_key>
                       TF_VAR_scope_level: <+pipeline.variables.scope_level>
+                    outputVariables:
+                      - name: HAS_SDA_RESOURCE
                   timeout: 30m
                   failureStrategies:
                     - onFailure:
@@ -322,6 +347,35 @@ pipeline:
                       minimumCount: 1
                       disallowPipelineExecutor: false
                     approverInputs: []
+                  when:
+                    stageStatus: Success
+                    condition: <+stages.tofu_plan.spec.execution.steps.tofu_plan_step.output.outputVariables.HAS_SDA_RESOURCE> != "true"
+              - step:
+                  name: Approve SDA Installation
+                  identifier: approve_sda_installation
+                  type: HarnessApproval
+                  timeout: 1d
+                  spec:
+                    approvalMessage: |-
+                      Review the exact SDA plan and the approved private configuration.
+
+                        Action       : <+pipeline.variables.tofu_action>
+                        Organization : <+stages.tofu_plan.spec.execution.steps.tofu_init_plan.output.outputVariables.EFFECTIVE_ORG_NAME>
+                        Project      : <+pipeline.variables.project_name>
+                        Plan artifact: <+stages.tofu_plan.spec.execution.steps.upload_plan.output.outputVariables.PLAN_GCS_PATH>
+
+                      Approve only after the Kubernetes team has approved the namespace,
+                      ServiceAccount/RBAC, egress, pod security, quotas, and workload lifecycle.
+                    includePipelineExecutionHistory: true
+                    approvers:
+                      userGroups:
+                        - <+pipeline.variables.kubernetes_approver_user_group>
+                      minimumCount: 1
+                      disallowPipelineExecutor: true
+                    approverInputs: []
+                  when:
+                    stageStatus: Success
+                    condition: <+stages.tofu_plan.spec.execution.steps.tofu_plan_step.output.outputVariables.HAS_SDA_RESOURCE> == "true"
         when:
           pipelineStatus: Success
           condition: <+pipeline.variables.tofu_action> != "plan"
@@ -421,6 +475,7 @@ pipeline:
                       TF_VAR_harness_platform_account: <+account.identifier>
                       TF_VAR_organization_name: <+stages.tofu_plan.spec.execution.steps.tofu_init_plan.output.outputVariables.EFFECTIVE_ORG_NAME>
                       TF_VAR_project_name: <+pipeline.variables.project_name>
+                      TF_VAR_project_key: <+pipeline.variables.project_key>
                       TF_VAR_scope_level: <+pipeline.variables.scope_level>
                       EFFECTIVE_ORG_NAME: <+stages.tofu_plan.spec.execution.steps.tofu_init_plan.output.outputVariables.EFFECTIVE_ORG_NAME>
                     outputVariables:
@@ -504,6 +559,7 @@ pipeline:
                       TF_VAR_harness_platform_account: <+account.identifier>
                       TF_VAR_organization_name: <+stages.tofu_plan.spec.execution.steps.tofu_init_plan.output.outputVariables.EFFECTIVE_ORG_NAME>
                       TF_VAR_project_name: <+pipeline.variables.project_name>
+                      TF_VAR_project_key: <+pipeline.variables.project_key>
                       TF_VAR_scope_level: <+pipeline.variables.scope_level>
                   timeout: 60m
                   failureStrategies:

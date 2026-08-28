@@ -64,3 +64,16 @@ output "org_directory" {
   description = "Resolved absolute path to the org config directory"
   value       = local.org_directory
 }
+
+output "service_discovery_agents" {
+  description = "Project Service Discovery Agents keyed by merged YAML path."
+  value = {
+    for key, agent in harness_service_discovery_agent.service_discovery_agents : key => {
+      id                   = agent.id
+      identity             = agent.identity
+      installation_details = agent.installation_details
+      network_map_count    = agent.network_map_count
+      service_count        = agent.service_count
+    }
+  }
+}

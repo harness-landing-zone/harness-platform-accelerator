@@ -1,0 +1,5 @@
+scope_level: account
+description: Existing account developer group allowed to request projects in this organization.
+role_bindings:
+  - role: idp_org_requester
+    resource_group: _all_organization_level_resources

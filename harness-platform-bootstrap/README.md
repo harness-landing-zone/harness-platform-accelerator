@@ -12,6 +12,7 @@ Use this entrypoint to stand up the initial platform-management footprint:
 - Its starter projects (`Platform Management`)
 - Org-scoped resources from the embedded `organizations/` config tree
 - A deploy service account, named after the org, with its API key, token, and a secret that holds the token
+- A separate least-privilege `idp_project_request_runner` service account for the developer project-request Workflow
 - The deploy pipelines, imported from the `.harness/` folder
 
 This entrypoint is meant to be run locally. It is not the long-term deployment path.
@@ -36,6 +37,7 @@ This folder is a thin wrapper around the shared module in [../modules/harness-re
 
 - [main.tf](./main.tf) points the module at this folder's own `organizations/` tree, so the bootstrap is self-contained and does not need an external config repo.
 - [harness_service_accounts.tf](./harness_service_accounts.tf) creates the deploy service account and stores its token as a secret named after the org (for the default org, `harness_platform_accelerator_platform_deployer_token`). The deploy pipelines read this secret to log in to Harness.
+- [idp_project_request_runner.tf](./idp_project_request_runner.tf) creates the IDP runner, its account-scoped token secret, and scoped connector/pipeline/workspace bindings. It never receives the deployer's account-admin role.
 - The pipeline definitions live in [.harness/](./.harness/) in this folder. Each project's `pipelines/*.yaml` files are small pointers that tell Harness which `.harness/` file to import.
 
 ## Authentication

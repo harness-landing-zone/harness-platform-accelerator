@@ -1,0 +1,21 @@
+name: "Non-production cluster discovery"
+environment_identifier: "development"
+infra_identifier: "development_cluster"
+permanent_installation: true
+
+config:
+  kubernetes:
+    namespace: "harness-sd"
+    disable_namespace_creation: true
+    namespaced: true
+    service_account: "harness-sd"
+    image_pull_policy: "IfNotPresent"
+    run_as_user: 2000
+    run_as_group: 2000
+  data:
+    enable_node_agent: false
+    enable_orphaned_pod: false
+    enable_batch_resources: false
+    collection_window_in_min: 5
+    cron:
+      expression: "0/15 * * * *"

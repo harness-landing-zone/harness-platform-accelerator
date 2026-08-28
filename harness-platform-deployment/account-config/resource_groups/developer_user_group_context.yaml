@@ -1,0 +1,5 @@
+description: Eligible developer teams shown by shared IDP Workflows.
+resource_filters:
+  - type: USERGROUP
+    identifiers:
+      - Developers

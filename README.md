@@ -30,9 +30,10 @@ OpenTofu/Terraform templates for managing a Harness account, organizations, and 
   vars `HARNESS_ACCOUNT_ID`, `HARNESS_PLATFORM_API_KEY`, `HARNESS_ENDPOINT`.
 - **Providers:** copy `providers.tf.example` → `providers.tf` in each entrypoint.
   `providers.tf` is gitignored — never commit it.
-- **Backend-agnostic:** no state backend is hardcoded. Use Harness IACM, AWS S3,
-  GCS, or local state — wire your choice into the entrypoint's `terraform.tf`.
-  The GCS snippets left in comments are **examples only**, not a requirement.
+- **Deployment state:** `harness-platform-deployment` declares an empty GCS
+  backend; the shared pipeline supplies its bucket and per-scope prefix at init.
+  Use `tofu init -backend=false` only for an isolated local plan that will never
+  be applied. Changing backend type requires an intentional state migration.
 - **Environment-generic defaults:** values like org/repo names and secret refs
   default to examples — override them per environment, don't assume the defaults
   fit your account.
@@ -40,6 +41,10 @@ OpenTofu/Terraform templates for managing a Harness account, organizations, and 
   keep each config change scoped to one organization.
 - **Config lives in `platform-configs/organizations/<Org Name>/…`** — the folder
   name matches the org; projects are auto-discovered from `projects/*/config.yaml`.
+- **Production config stays private.** For this accelerator, bootstrap owns the
+  existing platform-team organization and the private
+  `harness-platform-accelerator-config` repository supplies new project and SDA
+  YAML. This public repository contains examples only.
 - **Always `tofu plan` and review before `apply`.** The pipelines gate apply
   behind an approval stage — don't bypass it.
 
@@ -80,7 +85,19 @@ Each entrypoint manages:
 
 - [OpenTofu](https://opentofu.org/docs/intro/install/) (`tofu`) **or** [Terraform](https://developer.hashicorp.com/terraform/install) (`terraform`)
 - A Harness account with an API key that has account-admin permissions
-- The `harness/harness` provider `>= 0.31` and `hashicorp/time ~> 0.9.1` (fetched automatically by `tofu init`)
+- The locally verified `harness/harness ~> 0.45.3` provider and `hashicorp/time ~> 0.9.1` (fetched automatically by `tofu init`). The SDA resource first appeared in provider `v0.38.0`.
+
+## Service Discovery Agent onboarding
+
+The Harness IDP Service Discovery Agent—not the GitOps Agent—is a project-scoped YAML category managed directly by `modules/harness-resources`. Real configuration belongs in the private config repository at:
+
+```text
+organizations/<org>/projects/<project>/service-discovery-agents/<agent-key>.yaml
+```
+
+The normal project deployment loads every `*.yaml` file in that directory using the existing global-default/override merge. SDA resources share the project state by explicit platform ownership choice. The existing `tofu_deploy` pipeline detects SDA resources in the reviewed plan and replaces the broad project approval with the supplied `kubernetes_approver_user_group`; the executor cannot self-approve that run.
+
+See [`docs/service-discovery-agent.md`](docs/service-discovery-agent.md) for verified provider behavior, complete arguments/outputs, Kubernetes RBAC, ownership, import/adoption, lifecycle limitations, and source evidence.
 
 ---
 
@@ -480,17 +497,18 @@ AWS only. Exactly one authentication mode must be provided; the module enforces 
 
 ## State Management
 
-This repo uses **local state only**. Each entrypoint maintains its own `terraform.tfstate` file within its directory.
+The shared `tofu_deploy` pipeline initializes `harness-platform-deployment` with GCS state. Account, organization, and standalone project runs use separate prefixes; SDA resources intentionally share their standalone project's state.
 
-- Do not configure a remote backend unless you intend to migrate.
-- Run one entrypoint at a time — they are independent.
-- Commit `terraform.tfstate` files only if your team has agreed on a shared local-state workflow; otherwise keep them local and gitignored.
+- Never commit Terraform/OpenTofu state.
+- Use the same `organization_name`, `project_name`, and backend inputs for every run that owns a given project.
+- `project_key` changes only config-folder lookup; the existing project state prefix remains based on `project_name`.
+- Use `-backend=false` only for an isolated plan that will not be applied.
 
 ---
 
 ## Provider / Resource Notes
 
-- Provider: `harness/harness >= 0.31`, `hashicorp/time ~> 0.9.1`
+- Provider: `harness/harness ~> 0.45.3`, `hashicorp/time ~> 0.9.1`
 - `harness_platform_role_assignments.identifier` must be unique per scope; the library derives it as `<group_identifier>_<role_identifier>`.
 - `harness_platform_usergroup` SSO fields are in the `lifecycle { ignore_changes }` block — SSO linking managed outside Terraform will not be overwritten on subsequent runs.
 - `harness_platform_permissions` is fetched live at plan time to validate role permissions against the actual account.
