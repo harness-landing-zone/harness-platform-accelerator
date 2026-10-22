@@ -1,0 +1,244 @@
+pipeline:
+  name: delegate-release
+  identifier: delegate_release
+  projectIdentifier: change-to-proj
+  orgIdentifier: change-to-org
+  tags: {}
+  description: Runs on the existing helm-delegate. Compares ring version to the build, non-prod and prod delegates, scans the image once, then installs or upgrades them one at a time.
+  variables:
+    - name: image_domain
+      type: String
+      value: us-docker.pkg.dev
+    - name: image_name
+      type: String
+      value: gar-prod-setup/harness-public/harness/delegate
+  stages:
+    - stage:
+        name: detect
+        identifier: detect
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  type: Http
+                  name: ring version
+                  identifier: ring
+                  timeout: 30s
+                  spec:
+                    url: https://app.harness.io/ng/api/delegate-setup/latest-supported-version?accountIdentifier=<+account.identifier>
+                    method: GET
+                    headers:
+                      - key: x-api-key
+                        value: <+secrets.getValue("account.harness_api_key")>
+                    inputVariables: []
+                    outputVariables:
+                      - name: version
+                        type: String
+                        value: <+json.select("resource.latestSupportedVersion", httpResponseBody)>
+                    assertion: <+httpResponseCode> == 200
+                    delegateSelectors:
+                      - helm-delegate
+              - step:
+                  type: Http
+                  name: build versions
+                  identifier: v_build
+                  timeout: 30s
+                  spec:
+                    url: https://app.harness.io/ng/api/delegate-setup/listDelegates?accountIdentifier=<+account.identifier>
+                    method: POST
+                    headers:
+                      - key: x-api-key
+                        value: <+secrets.getValue("account.harness_api_key")>
+                      - key: Content-Type
+                        value: application/json
+                    requestBody: "{\"filterType\":\"Delegate\",\"delegateName\":\"build\"}"
+                    inputVariables: []
+                    outputVariables:
+                      - name: versions
+                        type: String
+                        value: <+json.select("resource[?(@.name=='build')].delegateReplicas[*].version", httpResponseBody)>
+                      - name: raw
+                        type: String
+                        value: <+httpResponseBody>
+                    assertion: <+httpResponseCode> == 200
+                    delegateSelectors:
+                      - helm-delegate
+              - step:
+                  type: Http
+                  name: non-prod versions
+                  identifier: v_non_prod
+                  timeout: 30s
+                  spec:
+                    url: https://app.harness.io/ng/api/delegate-setup/listDelegates?accountIdentifier=<+account.identifier>
+                    method: POST
+                    headers:
+                      - key: x-api-key
+                        value: <+secrets.getValue("account.harness_api_key")>
+                      - key: Content-Type
+                        value: application/json
+                    requestBody: "{\"filterType\":\"Delegate\",\"delegateName\":\"non-prod\"}"
+                    inputVariables: []
+                    outputVariables:
+                      - name: versions
+                        type: String
+                        value: <+json.select("resource[?(@.name=='non-prod')].delegateReplicas[*].version", httpResponseBody)>
+                      - name: raw
+                        type: String
+                        value: <+httpResponseBody>
+                    assertion: <+httpResponseCode> == 200
+                    delegateSelectors:
+                      - helm-delegate
+              - step:
+                  type: Http
+                  name: prod versions
+                  identifier: v_prod
+                  timeout: 30s
+                  spec:
+                    url: https://app.harness.io/ng/api/delegate-setup/listDelegates?accountIdentifier=<+account.identifier>
+                    method: POST
+                    headers:
+                      - key: x-api-key
+                        value: <+secrets.getValue("account.harness_api_key")>
+                      - key: Content-Type
+                        value: application/json
+                    requestBody: "{\"filterType\":\"Delegate\",\"delegateName\":\"prod\"}"
+                    inputVariables: []
+                    outputVariables:
+                      - name: versions
+                        type: String
+                        value: <+json.select("resource[?(@.name=='prod')].delegateReplicas[*].version", httpResponseBody)>
+                      - name: raw
+                        type: String
+                        value: <+httpResponseBody>
+                    assertion: <+httpResponseCode> == 200
+                    delegateSelectors:
+                      - helm-delegate
+        tags: {}
+    - stage:
+        name: scan
+        identifier: scan
+        type: SecurityTests
+        when:
+          pipelineStatus: Success
+          condition: "!\"<+pipeline.stages.detect.spec.execution.steps.v_build.output.outputVariables.versions>\".contains(\"<+pipeline.stages.detect.spec.execution.steps.ring.output.outputVariables.version>\") || !\"<+pipeline.stages.detect.spec.execution.steps.v_non_prod.output.outputVariables.versions>\".contains(\"<+pipeline.stages.detect.spec.execution.steps.ring.output.outputVariables.version>\") || !\"<+pipeline.stages.detect.spec.execution.steps.v_prod.output.outputVariables.versions>\".contains(\"<+pipeline.stages.detect.spec.execution.steps.ring.output.outputVariables.version>\")"
+        spec:
+          cloneCodebase: false
+          execution:
+            steps:
+              - step:
+                  type: AquaTrivy
+                  name: scan delegate image
+                  identifier: trivy
+                  spec:
+                    mode: orchestration
+                    config: default
+                    target:
+                      type: container
+                      name: <+pipeline.variables.image_name>
+                      variant: <+pipeline.stages.detect.spec.execution.steps.ring.output.outputVariables.version>
+                    advanced:
+                      log:
+                        level: info
+                      fail_on_severity: none
+                    privileged: true
+                    image:
+                      type: docker_v2
+                      tag: <+pipeline.stages.detect.spec.execution.steps.ring.output.outputVariables.version>
+                      name: <+pipeline.variables.image_name>
+                      domain: <+pipeline.variables.image_domain>
+                    sbom:
+                      format: spdx-json
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec: {}
+        tags: {}
+    - stage:
+        name: release
+        identifier: release
+        type: Deployment
+        when:
+          pipelineStatus: Success
+          condition: "!\"<+pipeline.stages.detect.spec.execution.steps.v_build.output.outputVariables.versions>\".contains(\"<+pipeline.stages.detect.spec.execution.steps.ring.output.outputVariables.version>\") || !\"<+pipeline.stages.detect.spec.execution.steps.v_non_prod.output.outputVariables.versions>\".contains(\"<+pipeline.stages.detect.spec.execution.steps.ring.output.outputVariables.version>\") || !\"<+pipeline.stages.detect.spec.execution.steps.v_prod.output.outputVariables.versions>\".contains(\"<+pipeline.stages.detect.spec.execution.steps.ring.output.outputVariables.version>\")"
+        strategy:
+          matrix:
+            infra:
+              - delegate_build
+              - delegate_non_prod
+              - delegate_prod
+            maxConcurrency: 1
+          onFailure: SkipQueued
+        spec:
+          deploymentType: NativeHelm
+          service:
+            serviceRef: account.harness_delegate_helm
+          environment:
+            environmentRef: account.delegate_platform
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: <+matrix.infra>
+          execution:
+            steps:
+              - step:
+                  type: HelmDeploy
+                  name: helm install or upgrade
+                  identifier: helmupgrade
+                  timeout: 10m
+                  spec:
+                    skipDryRun: false
+                    skipSteadyStateCheck: false
+                    useUpgradeInstall: true
+                    commandFlags:
+                      - commandType: Upgrade
+                        flag: "--create-namespace --reset-then-reuse-values --set accountId=<+account.identifier> --set delegateName=<+infra.releaseName> --set delegateToken=<+secrets.getValue(\"account.delegate_token\")> --set managerEndpoint=https://app.harness.io --set upgrader.enabled=false --set delegateDockerImage=<+pipeline.variables.image_domain>/<+pipeline.variables.image_name>:<+pipeline.stages.detect.spec.execution.steps.ring.output.outputVariables.version>"
+              - step:
+                  type: Wait
+                  name: let delegate register
+                  identifier: wait
+                  spec:
+                    duration: 2m
+              - step:
+                  type: Http
+                  name: confirm version
+                  identifier: confirm
+                  timeout: 30s
+                  spec:
+                    url: https://app.harness.io/ng/api/delegate-setup/listDelegates?accountIdentifier=<+account.identifier>
+                    method: POST
+                    headers:
+                      - key: x-api-key
+                        value: <+secrets.getValue("account.harness_api_key")>
+                      - key: Content-Type
+                        value: application/json
+                    requestBody: "{\"filterType\":\"Delegate\",\"delegateName\":\"<+infra.releaseName>\"}"
+                    inputVariables: []
+                    outputVariables:
+                      - name: versions
+                        type: String
+                        value: <+json.select("resource[?(@.name=='<+infra.releaseName>')].delegateReplicas[*].version", httpResponseBody)>
+                    assertion: <+json.list("resource[?(@.name=='<+infra.releaseName>')].delegateReplicas[*].version", httpResponseBody)>.contains("<+pipeline.stages.detect.spec.execution.steps.ring.output.outputVariables.version>")
+                    delegateSelectors:
+                      - helm-delegate
+                  failureStrategies:
+                    - onFailure:
+                        errors:
+                          - Unknown
+                        action:
+                          type: Retry
+                          spec:
+                            retryCount: 4
+                            retryIntervals:
+                              - 60s
+                            onRetryFailure:
+                              action:
+                                type: MarkAsFailure
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: Abort
+        tags: {}
