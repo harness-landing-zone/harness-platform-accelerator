@@ -1,0 +1,46 @@
+---
+########################
+# Monitored Service with a Prometheus health source
+#
+# Rename to <name>.yaml (drop .example) to have it applied.
+########################
+type: Application
+description: Monitored service with Prometheus health source
+service_ref: my_service          # identifier of an existing Harness service
+environment_ref: prod            # identifier of an existing Harness environment
+
+health_sources:
+  - name: prometheus
+    identifier: prometheus
+    type: Prometheus
+    version: v2
+    # spec is passed verbatim to the provider as JSON — this is the Prometheus shape.
+    spec:
+      connectorRef: prometheus_connector   # identifier of a Prometheus connector
+      metricDefinitions:
+        - identifier: prometheus_metric
+          metricName: Prometheus Metric
+          query: avg(container_cpu_usage_seconds_total{namespace="my-app"})
+          isManualQuery: true
+          groupName: Infrastructure
+          serviceInstanceFieldName: ""
+          sli:
+            enabled: true
+          analysis:
+            liveMonitoring:
+              enabled: true
+            deploymentVerification:
+              enabled: false
+            riskProfile:
+              category: Performance
+              metricType: INFRA
+              thresholdTypes:
+                - ACT_WHEN_HIGHER
+
+change_sources:
+  - name: Harness CD
+    identifier: harness_cd
+    type: HarnessCDNextGen
+    category: Deployment
+    enabled: true
+    spec: {}

@@ -60,6 +60,12 @@ locals {
       patterns   = ["*.yaml"]
       key_fn     = "path"
     }
+    monitoring-connectors = {
+      global_dir = "${local.source_directory}/monitoring-connectors"
+      org_dir    = "${local.config_directory}/monitoring-connectors"
+      patterns   = ["*.yaml"]
+      key_fn     = "path"
+    }
   }
 
   # Organization scope only: org-level secrets.
@@ -90,6 +96,12 @@ locals {
     pipelines = {
       global_dir = "${local.source_directory}/pipelines"
       org_dir    = "${local.config_directory}/pipelines"
+      patterns   = ["*.yaml"]
+      key_fn     = "path"
+    }
+    monitored_services = {
+      global_dir = "${local.source_directory}/monitored_services"
+      org_dir    = "${local.config_directory}/monitored_services"
       patterns   = ["*.yaml"]
       key_fn     = "path"
     }
