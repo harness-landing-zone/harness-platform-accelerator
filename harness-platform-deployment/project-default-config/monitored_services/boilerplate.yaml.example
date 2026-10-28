@@ -1,0 +1,41 @@
+---
+########################
+# Harness Monitored Service (SRM) with Health Sources
+#
+# - name       = the file name (hyphens/underscores -> spaces)
+# - identifier = the file name (hyphens/spaces -> underscores), or set `identifier` below
+# - Monitored services are project-scope only.
+########################
+# Supported Types - Application, Infrastructure
+type: Application
+description: Monitored service managed by Solutions Factory
+service_ref: my_service          # identifier of an existing Harness service
+environment_ref: prod            # identifier of an existing Harness environment
+tags:
+  team: platform
+
+# One entry per monitoring tool. `spec` is passed through verbatim to the
+# provider as JSON, so its shape depends on `type` (AppDynamics, Prometheus,
+# NewRelic, CustomHealth, ...). Example for AppDynamics:
+health_sources:
+  - name: appdynamics
+    identifier: appdynamics
+    type: AppDynamics
+    version: v2
+    spec:
+      connectorRef: appd_connector
+      feature: Application Monitoring
+      applicationName: my-app
+      tierName: my-tier
+      metricPacks:
+        - identifier: Errors
+        - identifier: Performance
+
+# Optional: where change events (deployments, incidents) come from.
+change_sources:
+  - name: Harness CD
+    identifier: harness_cd
+    type: HarnessCDNextGen
+    category: Deployment
+    enabled: true
+    spec: {}

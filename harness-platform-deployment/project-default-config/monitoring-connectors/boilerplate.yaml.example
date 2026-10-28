@@ -1,0 +1,25 @@
+---
+########################
+# Monitoring connector (Prometheus)
+#
+# - name       = the file name (hyphens/underscores -> spaces)
+# - identifier = the file name (hyphens/spaces -> underscores)
+# Reference this connector's identifier as `connectorRef` in a monitored
+# service health source (see ../monitored_services/prometheus.yaml.example).
+########################
+type: prometheus
+description: Prometheus connector managed by Solutions Factory
+url: https://prometheus.example.com
+
+# Reached via a delegate (omit for Harness Platform / direct connectivity).
+delegate_selectors:
+  - my-delegate
+
+# Optional basic auth. password_ref is a Harness secret identifier.
+# user_name: prometheus
+# password_ref: account.prometheus_password
+
+# Optional custom headers.
+# headers:
+#   - key: X-Scope-OrgID
+#     value: my-tenant
