@@ -1,0 +1,20 @@
+type: vault
+name: "Vault OIDC Connector"
+identifier: vault_oidc
+description: "HashiCorp Vault secret manager using OIDC (JWT) auth"
+tags:
+  owner: platform-team
+  purpose: secrets
+
+vault_url: "https://vault.example.com:8200"
+base_path: "harness"
+secret_engine_name: "secret"
+secret_engine_version: 2
+renewal_interval_minutes: 10
+
+# OIDC / JWT auth. auth_token references a Harness secret holding the JWT —
+# here the service account token added as the `harness_token` secret.
+use_jwt_auth: true
+vault_jwt_auth_path: "jwt"
+vault_jwt_auth_role: "harness"
+auth_token: "account.harness_token"
