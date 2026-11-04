@@ -66,6 +66,12 @@ locals {
       patterns   = ["*.yaml"]
       key_fn     = "path"
     }
+    secret-manager-connectors = {
+      global_dir = "${local.source_directory}/secret-manager-connectors"
+      org_dir    = "${local.config_directory}/secret-manager-connectors"
+      patterns   = ["*.yaml"]
+      key_fn     = "path"
+    }
   }
 
   # Organization scope only: org-level secrets.
