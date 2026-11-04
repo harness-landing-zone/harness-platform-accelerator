@@ -3,13 +3,13 @@
 # Harness secret reference (auth_token), never an inline value.
 
 locals {
-  secret_manager_connectors = local.merged_sources["secret-manager-connectors"]
+  secret_provider_connectors = local.merged_sources["secret-manager-connectors"]
 }
 
-module "vault_secret_manager_connector" {
+module "secret_provider_connector" {
   source = "../secret-manager-connectors"
   for_each = {
-    for connector in local.secret_manager_connectors : connector.identifier => connector
+    for connector in local.secret_provider_connectors : connector.identifier => connector
     if lower(lookup(connector.cnf, "type", "")) == "vault"
   }
 
